@@ -26,6 +26,6 @@ def get_gares():
     if os.path.exists(chemin):
         return pd.read_parquet(chemin)  # si le fichier existe déjà dans data/raw on le relit et on le renvoie sans le télécharger à nouveau
     url = 'https://ressources.data.sncf.com/api/explore/v2.1/catalog/datasets/gares-de-voyageurs/exports/csv?use_labels=true'
-    df = pd.read_csv(url, sep=';')  # ouvre le fichier comme dataframe pandas
+    df = pd.read_csv(url, sep=';', dtype={"Code commune": str})  # ouvre le fichier comme dataframe pandas en convertissant Code commune comme str pour éviter de perdre le premier 0
     df.to_parquet(chemin, index=False)  # enregistre le fichier au chemin à l'emplacement prévu
     return df

@@ -65,7 +65,7 @@ def clean_gares():
     df_gares = df_gares.rename(columns={"Code_UIC": "code_uic", "Code commune": "code_commune", "Nom_Gare": "nom_gare", "Position géographique": "position_geographique", "Id_Gare": "id_gare"})
 
     # 4. Harmonisation des types
-    df_gares["code_commune"] = df_gares["code_commune"].astype("string")  # code_commune : str
+    #df_gares["code_commune"] = df_gares["code_commune"].astype("string")  # code_commune : str
 
     # 5. Vérification de l'unicité
     assert df_gares["code_uic"].is_unique, "Erreur : plusieurs lignes possèdent le même code_uic"
