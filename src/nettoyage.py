@@ -67,9 +67,9 @@ def clean_gares(df_gares):
     assert df_gares["code_uic"].is_unique, "Erreur : plusieurs lignes possèdent le même code_uic"
 
     # 6. Vérification gares hors métropole
-    departements = df["code_commune"].str[:2]
+    departements = df_gares["code_commune"].str[:2]
     departements_metropole = [f"{i:02d}" for i in range(1, 96)] + ["2A", "2B"]  # Défini la liste departements_métropole comme la liste des entiers de 1 a 96 au format str ainsi que 2A et 2B
-    assert departements.isin(departements_metropole).all(), \ "Certaines gares ne sont pas situées en France métropolitaine"
+    assert departements.isin(departements_metropole).all(), "Certaines gares ne sont pas situées en France métropolitaine"
 
     # 7. Enregistrement du fichier nettoye dans data/clean
     chemin = CLEAN_DATA_DIR / 'gares-de-voyageurs.csv'
