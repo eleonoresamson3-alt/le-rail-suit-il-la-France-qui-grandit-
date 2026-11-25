@@ -2,6 +2,7 @@
 
 import os #  module de manipulation des fichiers et des données
 import zipfile  #  permet d'ouvrir et lire des fichiers zip
+import json
 
 import pandas as pd
 import requests   #  téléchargement des fichiers ou pages depuis internet
@@ -45,3 +46,24 @@ def get_dgac(url, annees):
                                     dtype={"ANMOIS": str, "PAP": str})
             tables.append(table)
     return pd.concat(tables, ignore_index=True) # assemble les années en un seul tableau
+
+#get_base_carbone permet de récupérer la base de données sur les émissions carbone une seule fois puis stockée. 
+def get_base_carbone(url, identifiants):
+    chemin = "data/raw/base_carbone.json"
+    # l'API n'est interrogée qu'une fois, on récupère 100 lignes maximum, seulement les éléments choisis et le total, pas le détails
+    if not os.path.exists(chemin):
+        parametres = {
+            "Identifiant_de_l'élément_in": ",".join(identifiants),
+            "Type_Ligne_eq": "Elément",
+            "size": 100,
+        }
+        reponse = requests.get(url, params=parametres, timeout=60)
+        reponse.raise_for_status()
+        with open(chemin, "w", encoding="utf-8") as fichier:
+            fichier.write(reponse.text)
+    # la réponse est un JSON : les facteurs sont dans la liste "results" "utf-8": garder les accents
+    with open(chemin, encoding="utf-8") as fichier:
+        resultats = json.load(fichier)["results"]
+    return pd.DataFrame(resultats)
+
+
