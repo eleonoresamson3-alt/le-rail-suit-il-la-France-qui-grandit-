@@ -1,6 +1,10 @@
 """Fonctions clean_ : nettoient chaque base"""
 import pandas as pd
 
+
+
+
+
 # cette fonction permet de renommer nos 5 colonnes pour standardiser nos variables entre les bases de données pour les jointures
 def clean_contours(communes):
     # les DOM ont un code département qui commence par 97
@@ -18,6 +22,11 @@ def clean_contours(communes):
     assert propre["code_commune"].is_unique
     assert (propre["code_commune"].str.len() == 5).all()
     return propre.reset_index(drop=True) #on renvoie notre base de données, chaque observation est numérotée de 0 à 34 745 
+
+
+
+
+
 
 #création d'une table: chaque ligne correspond à une liaison et les colonnes synthètisent toutes les données sur cette liaison
 def clean_dgac(pap, annee_debut, annee_fin):
@@ -55,3 +64,26 @@ def clean_dgac(pap, annee_debut, annee_fin):
     liaisons.insert(2, "code_oaci_2", liaisons["code_liaison"].str[5:])
     assert liaisons["code_liaison"].is_unique
     return liaisons
+
+
+
+
+#  on nettoie la base de données pour qu'elle ne garde que les données essentielles à l'analyse, avec une ligne = un mode
+def clean_base_carbone(bc, modes):
+    #  on commence par renommer les variables
+    propre = bc[["Identifiant_de_l'élément", "Total_poste_non_décomposé", "Unité_français"]].rename(
+        columns={
+            "Identifiant_de_l'élément": "code_ademe",
+            "Total_poste_non_décomposé": "co2_kg_km",
+            "Unité_français": "unite",
+        }
+    )
+    #  nom court du mode à partir de l'identifiant ADEME (map permet de remplacer les noms parce ceux qui étaient dans le dictionnaire)
+    propre.insert(0, "mode", propre["code_ademe"].map(modes)) 
+    #  on vérifie qu'il ne manque pas de valeurs, que les modes sont uniques et on réinitialise la numération
+    assert len(propre) == len(modes)
+    assert propre["mode"].is_unique
+    assert propre["co2_kg_km"].notna().all()
+    return propre.sort_values("mode").reset_index(drop=True)
+
+
