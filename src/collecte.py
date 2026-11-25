@@ -66,4 +66,18 @@ def get_base_carbone(url, identifiants):
         resultats = json.load(fichier)["results"]
     return pd.DataFrame(resultats)
 
-
+#téléchargement et stockage unique de la base de données, et notamment des variables qui nous intéressent
+def get_parc_auto(url, annee_debut, annee_fin):
+    chemin = f"data/raw/parc_auto_{annee_debut}_{annee_fin}.csv"
+    # la base complète est très lourde : on demande à l'API seulement ce qui nous sert, on évacue les voitures de société
+    if not os.path.exists(chemin):
+        parametres = {
+            "GROUPE": "eq:VP",
+            "STATUT_UTILISATEUR": "eq:Particulier",
+            "columns": f"COMMUNE_CODE,COMMUNE_NOM,CARBURANT,CRIT_AIR,PARC_{annee_debut},PARC_{annee_fin}",
+        }
+        reponse = requests.get(url, params=parametres, timeout=300)
+        reponse.raise_for_status()
+        with open(chemin, "wb") as fichier:
+            fichier.write(reponse.content)
+    return pd.read_csv(chemin, sep=";", dtype={"COMMUNE_CODE": str})
