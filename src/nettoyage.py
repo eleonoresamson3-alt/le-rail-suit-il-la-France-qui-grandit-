@@ -87,3 +87,22 @@ def clean_base_carbone(bc, modes):
     return propre.sort_values("mode").reset_index(drop=True)
 
 
+def clean_parc_auto(parc, annee_debut, annee_fin):
+    # on retire les lignes avec des codes inconnus
+    connus = parc[~parc["COMMUNE_CODE"].str.endswith("000")].copy()
+    # arrondissements de Paris, Lyon et Marseille ramenés à leur ville
+    codes = connus["COMMUNE_CODE"].copy()
+    codes[codes.str.startswith("751")] = "75056"
+    codes[codes.str.startswith("6938")] = "69123"
+    codes[codes.str.startswith("132")] = "13055"
+    connus["code_commune"] = codes
+    # métropole seulement : les DOM ont un code qui commence par 97
+    connus = connus[~connus["code_commune"].str.startswith("97")]
+    # une ligne par commune : somme de tous les carburants et vignettes
+    colonnes = {f"PARC_{annee_debut}": f"voitures_{annee_debut}", f"PARC_{annee_fin}": f"voitures_{annee_fin}"}
+    propre = connus.groupby("code_commune")[list(colonnes)].sum().reset_index().rename(columns=colonnes)
+    # la clé des jointures doit être unique et sur 5 caractères
+    assert propre["code_commune"].is_unique
+    assert (propre["code_commune"].str.len() == 5).all()
+    return propre
+
