@@ -19,10 +19,10 @@ def clean_frequentation():
 
     # 3. Passage au format long
     id_vars = [df_wide.columns[i] for i in range(4)]  # colonnes à conserver
-    value_vars = [df_wide.columns[i] for i in range(5,10)]  # colonnes à basculer
+    value_vars = [df_wide.columns[i] for i in range(4,11)]  # colonnes à basculer
     df_long = df_wide.melt(id_vars=id_vars, value_vars=value_vars, var_name="indicateur annee", value_name="frequentation")  # passage au format long
 
-    # 4. Ajout de la colonne année et Supression de la colonne indicateur année
+    # 4. Ajout de la colonne année et supression de la colonne indicateur année
     df_long["annee"] = df_long["indicateur annee"].str[-4:]  # Ajoute la colonne annee défini en fonction de la colonne indicateur année
     df_long = df_long.drop("indicateur annee", axis=1)  # Supprime la colonne indicateur annee
     cols = list(df_long.columns)
