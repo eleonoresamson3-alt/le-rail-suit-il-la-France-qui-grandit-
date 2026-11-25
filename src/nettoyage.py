@@ -1,5 +1,7 @@
 """Fonctions clean_ : nettoient chaque base et écrivent dans data/clean/."""
 
+from src.config import CLEAN_DATA_DIR
+
 
 def clean_frequentation(df_wide):
 
@@ -38,4 +40,33 @@ def clean_frequentation(df_wide):
     # Une seule observation par gare et par année
     assert not df_long.duplicated(subset=["code_uic", "annee"]).any(), "Erreur : des doublons gare-année sont présents"
 
+    # 7. Enregistrement du fichier nettoye dans data/clean
+    chemin = CLEAN_DATA_DIR / 'gares.csv'
+    df_long.to_csv(chemin, sep =',', index = False)
+
     return df_long
+
+
+def clean_gares(df_gares):
+
+    # 1. Copies des données brutes
+    df_gares = df_gares.copy()
+
+    # 2. Suppression des colonnes non utilisees
+    columns_drop = ['Trigramme', 'Segment(s) DRG']
+    df_gares = df_gares.drop(columns_drop, axis=1) 
+
+    # 3.Nom des variables
+    df_gares = df_gares.rename(columns={"Code_UIC": "code_uic", "Code commune": "code_commune", "Nom_Gare": "nom_gare", "Position géographique": "position_geographique", "Id_Gare": "id_gare"})
+
+    # 4. Harmonisation des types
+    df_gares["code_commune"] = df_gares["code_commune"].astype("string")  # code_commune : str
+
+    # 5. Vérification de l'unicité
+    assert df_gares["code_uic"].is_unique, "Erreur : plusieurs lignes possèdent le même code_uic"
+
+    # 6. Enregistrement du fichier nettoye dans data/clean
+    chemin = CLEAN_DATA_DIR / 'gares.csv'
+    df_gares.to_csv(chemin, sep =',', index = False)
+
+    return df_gares
