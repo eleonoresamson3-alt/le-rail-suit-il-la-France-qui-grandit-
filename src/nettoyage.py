@@ -2,7 +2,7 @@
 
 from src.config import CLEAN_DATA_DIR
 
-
+# la fonction clean_frequentation renvoie et enregistre un dataframe passé au format long en conservant seulement les observation du périmètre et harmonise les noms et les types des variables
 def clean_frequentation(df_wide):
 
     # 1. Copie des données brutes
@@ -11,7 +11,7 @@ def clean_frequentation(df_wide):
     # 2. Suppression des colonnes non désirées
     columns_drop = [col for col in df_wide.columns if "+ Non" in col]
     df_wide = df_wide.drop(columns_drop, axis=1)  # supprime les colonnes Voyageurs  + Non Voyageurs
-    years_drop = ["Total Voyageurs 2023", "Total Voyageurs 2016", "Total Voyageurs 2015"]
+    years_drop = ["Total Voyageurs 2016", "Total Voyageurs 2015"]
     df_wide = df_wide.drop(years_drop, axis=1)  # supprime les années hors périmètre
 
     # 3. Passage au format long
@@ -27,26 +27,27 @@ def clean_frequentation(df_wide):
     cols.insert(-1, col)
     df_long = df_long[cols]  # Repositionne colonne année
 
-    # 4. Nom des variables 
+    # 5. Nom des variables 
     df_long = df_long.rename(columns={"Code UIC": "code_uic", "Code postal": "code_postal", "Nom de la gare": "nom_gare", "Segmentation DRG": "segmentation_drg"})
 
-    # 5. Harmonisation des types
+    # 6. Harmonisation des types
     df_long["code_uic"] = df_long["code_uic"].astype("string")  # code_uic : str
     df_long["code_postal"] = df_long["code_postal"].astype("string")  # code_postal : str
     df_long["annee"] = df_long["annee"].astype(int)  # annee : str
     df_long["frequentation"] = df_long["frequentation"].astype(float)  # frequentation : float
 
-    # 5. Vérification de l'unicité
+    # 7. Vérification de l'unicité
     # Une seule observation par gare et par année
     assert not df_long.duplicated(subset=["code_uic", "annee"]).any(), "Erreur : des doublons gare-année sont présents"
 
-    # 7. Enregistrement du fichier nettoye dans data/clean
-    chemin = CLEAN_DATA_DIR / 'gares.csv'
+    # 8. Enregistrement du fichier nettoye dans data/clean
+    chemin = CLEAN_DATA_DIR / 'frequentation-gares.csv'
     df_long.to_csv(chemin, sep =',', index = False)
 
     return df_long
 
 
+# la fonction clean_gares renvoie et enregistre un dataframe conservant seulement les colonnes qui nous intéresse et en harmonisant les noms et les types
 def clean_gares(df_gares):
 
     # 1. Copies des données brutes
@@ -65,8 +66,13 @@ def clean_gares(df_gares):
     # 5. Vérification de l'unicité
     assert df_gares["code_uic"].is_unique, "Erreur : plusieurs lignes possèdent le même code_uic"
 
-    # 6. Enregistrement du fichier nettoye dans data/clean
-    chemin = CLEAN_DATA_DIR / 'gares.csv'
+    # 6. Vérification gares hors métropole
+    departements = df["code_commune"].str[:2]
+    departements_metropole = [f"{i:02d}" for i in range(1, 96)] + ["2A", "2B"]  # Défini la liste departements_métropole comme la liste des entiers de 1 a 96 au format str ainsi que 2A et 2B
+    assert departements.isin(departements_metropole).all(), \ "Certaines gares ne sont pas situées en France métropolitaine"
+
+    # 7. Enregistrement du fichier nettoye dans data/clean
+    chemin = CLEAN_DATA_DIR / 'gares-de-voyageurs.csv'
     df_gares.to_csv(chemin, sep =',', index = False)
 
     return df_gares
