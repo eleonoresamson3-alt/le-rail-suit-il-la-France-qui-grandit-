@@ -1,11 +1,14 @@
 """Fonctions clean_ : nettoient chaque base et écrivent dans data/clean/."""
 
 from src.config import CLEAN_DATA_DIR
+from src.collecte import get_frequentation
+from src.collecte import get_gares
 
 # la fonction clean_frequentation renvoie et enregistre un dataframe passé au format long en conservant seulement les observation du périmètre et harmonise les noms et les types des variables
-def clean_frequentation(df_wide):
+def clean_frequentation():
 
-    # 1. Copie des données brutes
+    # 1. Récupération et copie des données brutes
+    df_wide = get_frequentation()
     df_wide = df_wide.copy()
 
     # 2. Suppression des colonnes non désirées
@@ -41,16 +44,17 @@ def clean_frequentation(df_wide):
     assert not df_long.duplicated(subset=["code_uic", "annee"]).any(), "Erreur : des doublons gare-année sont présents"
 
     # 8. Enregistrement du fichier nettoye dans data/clean
-    chemin = CLEAN_DATA_DIR / 'frequentation-gares.csv'
-    df_long.to_csv(chemin, sep =',', index = False)
+    chemin = CLEAN_DATA_DIR / 'frequentation-gares.parquet'
+    df_long.to_parquet(chemin, index = False)
 
     return df_long
 
 
 # la fonction clean_gares renvoie et enregistre un dataframe conservant seulement les colonnes qui nous intéresse et en harmonisant les noms et les types
-def clean_gares(df_gares):
+def clean_gares():
 
-    # 1. Copies des données brutes
+    # 1. Récupération et copie des données brutes
+    df_gares = get_gares()
     df_gares = df_gares.copy()
 
     # 2. Suppression des colonnes non utilisees
@@ -72,7 +76,7 @@ def clean_gares(df_gares):
     assert departements.isin(departements_metropole).all(), "Certaines gares ne sont pas situées en France métropolitaine"
 
     # 7. Enregistrement du fichier nettoye dans data/clean
-    chemin = CLEAN_DATA_DIR / 'gares-de-voyageurs.csv'
-    df_gares.to_csv(chemin, sep =',', index = False)
+    chemin = CLEAN_DATA_DIR / 'gares-de-voyageurs.parquet'
+    df_gares.to_parquet(chemin, index = False)
 
     return df_gares
