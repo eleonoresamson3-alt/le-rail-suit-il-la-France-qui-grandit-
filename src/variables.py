@@ -77,3 +77,28 @@ def build_distance_gare(contours, gares, crs):
     corse = proches["code_departement"].isin(["2A", "2B"])
     proches.loc[corse, "dist_gare_km"] = float("nan")
     return proches[["code_commune", "dist_gare_km"]].reset_index(drop=True)
+
+
+def build_gares_annees(sncf, gares):
+    # chaque ligne SNCF reçoit le code commune corrigé de sa gare (build_gares)
+    annees = sncf.drop(columns="code_commune").merge(gares[["code_uic", "code_commune"]], on="code_uic", validate="many_to_one")
+    # codes UIC secondaires sans fréquentation : pas d'année, on les retire de cette table
+    annees = annees.dropna(subset=["annee"])
+    annees["annee"] = annees["annee"].astype(int)
+    annees = annees.rename(columns={"frequentation": "voyageurs"})
+    # une seule ligne par gare et par année
+    assert not annees.duplicated(subset=["code_uic", "annee"]).any()
+    return annees[["code_uic", "nom_gare", "code_commune", "segmentation_drg", "annee", "voyageurs"]].reset_index(drop=True)
+
+
+def build_liaisons_co2(liaisons, facteurs, annee_debut, annee_fin):
+    # facteur d'émission de chaque mode, en kgCO2e par passager.km
+    facteur = dict(zip(facteurs["mode"], facteurs["co2_kg_km"]))
+    table = liaisons.copy()
+    # pas de train vers la Corse : les aéroports corses ont un code OACI qui commence par LFK
+    corse = table["code_oaci_1"].str.startswith("LFK") | table["code_oaci_2"].str.startswith("LFK")
+    for annee in [annee_debut, annee_fin]:
+        passagers_km = table[f"passagers_{annee}"] * table["dist_km"]
+        table[f"co2_avion_t_{annee}"] = passagers_km * facteur["avion"] / 1000
+        table[f"co2_tgv_t_{annee}"] = (passagers_km * facteur["tgv"] / 1000).where(~corse)
+    return table
