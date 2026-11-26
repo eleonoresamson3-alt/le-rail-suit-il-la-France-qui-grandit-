@@ -4,10 +4,15 @@ import folium
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from folium.plugins import TimestampedGeoJson
+import numpy as np
+import seaborn as sns
 
 # déclin en rouge, stable en gris, croissance en bleu (même palette pour toutes les cartes)
 COULEURS_TRAJECTOIRE = ListedColormap(["#f19d9b", "#efefef", "#84b9f3"])
-
+# noms lisibles des variables communales, pour les graphiques
+NOMS_VARIABLES = {"tcam_pop_2017_2023": "Croissance population", "tcam_voyageurs_2017_2023": "Croissance voyageurs",
+                  "part_voiture_2023": "Part voiture", "voitures_1000_hab_2023": "Voitures / 1 000 hab.",
+                  "dist_gare_km": "Distance à la gare", "densite": "Densité"}
 
 def map_gares(communes, gares, gares_annees, annee, titre, chemin):
     """Carte des gares (taille = voyageurs) sur la trajectoire démographique des communes."""
@@ -55,3 +60,14 @@ def map_gares_curseur(gares, gares_annees, chemin):
                        auto_play=False, add_last_point=False, date_options="YYYY").add_to(carte)
     carte.save(chemin)
     return carte
+#heatmap triangulaire matrice de corrélation (que partie basse)
+def plot_correlations(communes, titre, chemin):
+    correlations = communes[list(NOMS_VARIABLES)].corr(method="spearman").rename(index=NOMS_VARIABLES, columns=NOMS_VARIABLES)
+    # on retire la 1re ligne et la dernière colonne, vides, puis on masque la moitié haute qui répète la basse
+    bas = correlations.iloc[1:, :-1]
+    masque = np.triu(np.ones(bas.shape, dtype=bool), k=1)
+    fig, ax = plt.subplots(figsize=(8, 6))
+    sns.heatmap(bas, mask=masque, annot=True, fmt=".2f", cmap="RdBu", vmin=-1, vmax=1,
+                linewidths=2, cbar_kws={"label": "Corrélation de Spearman"}, ax=ax)
+    ax.set_title(titre, loc="left", fontweight="bold")
+    fig.savefig(chemin, dpi=200, bbox_inches="tight")
