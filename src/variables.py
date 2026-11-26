@@ -127,3 +127,12 @@ def build_profil(tcam, dist_gare_km, seuil_km):
     croissance = (tcam > 0).map({True: "croissance", False: "déclin ou stable"})
     gare = desservie.map({True: "desservie", False: "non desservie"})
     return (croissance + " – " + gare).where(tcam.notna() & desservie.notna()), desservie
+
+
+def build_parts_croissance(communes, gares_annees, annee):
+    en_croissance = communes["tcam_pop_2017_2023"] > 0
+    part_pop = communes.loc[en_croissance, "pop_2023"].sum() / communes["pop_2023"].sum() * 100
+    # voyageurs de chaque gare, avec la croissance de sa commune
+    voyageurs = gares_annees[gares_annees["annee"] == annee].merge(communes[["code_commune", "tcam_pop_2017_2023"]], on="code_commune")
+    part_voy = voyageurs.loc[voyageurs["tcam_pop_2017_2023"] > 0, "voyageurs"].sum() / voyageurs["voyageurs"].sum() * 100
+    return part_pop, part_voy
