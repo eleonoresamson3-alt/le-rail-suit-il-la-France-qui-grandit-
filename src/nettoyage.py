@@ -37,7 +37,7 @@ def clean_frequentation():
     df_long["code_uic"] = df_long["code_uic"].astype(str)  # code_uic : str
     df_long["code_postal"] = df_long["code_postal"].astype(str)  # code_postal : str
     df_long["annee"] = df_long["annee"].astype(int)  # annee : str
-    df_long["frequentation"] = df_long["frequentation"].astype(float)  # frequentation : float
+    df_long["frequentation"] = df_long["frequentation"].astype(int)  # frequentation : integer
 
     # 7. Vérification de l'unicité
     # Une seule observation par gare et par année
