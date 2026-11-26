@@ -1,14 +1,17 @@
 """Fonctions plot_ et map_ : graphiques et cartes."""
 
+import folium
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
+from folium.plugins import TimestampedGeoJson
 
 # déclin en rouge, stable en gris, croissance en bleu (même palette pour toutes les cartes)
 COULEURS_TRAJECTOIRE = ListedColormap(["#f19d9b", "#efefef", "#84b9f3"])
 
-# carte des gares sur la trajectoire démographique des communes
+
 def map_gares(communes, gares, gares_annees, annee, titre, chemin):
-    # on set up les bulles pour les gares, à partir du code_iuc
+    """Carte des gares (taille = voyageurs) sur la trajectoire démographique des communes."""
+    # une bulle par gare : sa position et ses voyageurs de l'année
     bulles = gares.merge(gares_annees[gares_annees["annee"] == annee], on="code_uic")
     fig, ax = plt.subplots(figsize=(9, 9))
 
@@ -29,3 +32,26 @@ def map_gares(communes, gares, gares_annees, annee, titre, chemin):
     ax.set_axis_off()
     ax.set_title(titre, loc="left", fontweight="bold")
     fig.savefig(chemin, dpi=200, bbox_inches="tight")
+
+# carte interactive des gares avec un curseur pour choisir l'année
+def map_gares_curseur(gares, gares_annees, chemin):
+    # une ligne par gare et par année, avec la position de la gare en latitude-longitude
+    points = gares[["code_uic", "geometry"]].merge(gares_annees, on="code_uic").to_crs(4326)
+    # un point par gare et par année, au format attendu par le curseur de folium
+    elements = [{
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [p.geometry.x, p.geometry.y]},
+        "properties": {
+            "time": f"{p['annee']}-01-01",
+            "popup": f"{p['nom_gare']} : {p['voyageurs']:,.0f} voyageurs en {p['annee']}".replace(",", " "),
+            "icon": "circle",
+            "iconstyle": {"radius": max((p["voyageurs"] / 1e6) ** 0.5 * 2, 2), "color": "#191919",
+                          "weight": 0.5, "fillColor": "#191919", "fillOpacity": 0.6},
+        },
+    } for _, p in points.iterrows()]
+    carte = folium.Map(location=[46.6, 2.4], zoom_start=6)
+    # duration="P1Y" : chaque point ne reste affiché que pendant son année
+    TimestampedGeoJson({"type": "FeatureCollection", "features": elements}, period="P1Y", duration="P1Y",
+                       auto_play=False, add_last_point=False, date_options="YYYY").add_to(carte)
+    carte.save(chemin)
+    return carte

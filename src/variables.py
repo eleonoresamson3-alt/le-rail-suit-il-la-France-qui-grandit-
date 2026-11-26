@@ -2,6 +2,10 @@
 
 import geopandas as gpd
 import pandas as pd
+import folium
+import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
+
 
 def build_jointure(gauche, droite, nom):
     # on fait un left join à partir de la clé code_commune
@@ -136,3 +140,19 @@ def build_parts_croissance(communes, gares_annees, annee):
     voyageurs = gares_annees[gares_annees["annee"] == annee].merge(communes[["code_commune", "tcam_pop_2017_2023"]], on="code_commune")
     part_voy = voyageurs.loc[voyageurs["tcam_pop_2017_2023"] > 0, "voyageurs"].sum() / voyageurs["voyageurs"].sum() * 100
     return part_pop, part_voy
+
+
+#Carte interactive des gares: En lien avec voyageurs, nom et voyageurs au survol
+def map_gares_interactive(gares, gares_annees, annee, chemin):
+    bulles = gares[["code_uic", "geometry"]].merge(gares_annees[gares_annees["annee"] == annee], on="code_uic").to_crs(4326)
+    bulles = bulles.sort_values("voyageurs", ascending=False)   # petites gares dessinées par-dessus
+    carte = folium.Map(location=[46.6, 2.4], zoom_start=6)
+    for _, gare in bulles.iterrows():   # on parcourt les gares une par une pour ajouter chaque cercle à la carte
+        folium.CircleMarker(
+            location=[gare.geometry.y, gare.geometry.x],
+            radius=max((gare["voyageurs"] / 1e6) ** 0.5 * 2, 2),   # surface proportionnelle aux voyageurs
+            color="#191919", weight=0.5, fill=True, fill_opacity=0.6,
+            tooltip=f"{gare['nom_gare']} : {gare['voyageurs']:,.0f} voyageurs en {annee}".replace(",", " "),
+        ).add_to(carte)
+    carte.save(chemin)
+    return carte
