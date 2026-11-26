@@ -58,11 +58,11 @@ def clean_gares():
     df_gares = df_gares.copy()
 
     # 2. Suppression des colonnes non utilisees
-    columns_drop = ['Trigramme', 'Segment(s) DRG', 'Nom_Gare']
+    columns_drop = ['Trigramme', 'Segment(s) DRG', 'Nom_Gare', 'Id_Gare']
     df_gares = df_gares.drop(columns_drop, axis=1) 
 
     # 3.Nom des variables
-    df_gares = df_gares.rename(columns={"Code_UIC": "code_uic", "Code commune": "code_commune", "Position géographique": "position_geographique", "Id_Gare": "id_gare"})
+    df_gares = df_gares.rename(columns={"Code_UIC": "code_uic", "Code commune": "code_commune", "Position géographique": "position_geographique"})
 
     # 4. Harmonisation des types
     # Conversion de code_commune au type str faite dans la fonction get_gares
