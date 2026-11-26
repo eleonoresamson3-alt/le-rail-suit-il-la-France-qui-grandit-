@@ -112,3 +112,6 @@ def build_tcam(debut, fin, nb_annees):
 def build_trajectoire(tcam, seuil):
     return pd.cut(tcam, bins=[-float("inf"), -seuil, seuil, float("inf")],
                   labels=["déclin", "stable", "croissance"])
+
+def build_part(numerateur, denominateur, minimum):
+    return (numerateur / denominateur * 100).where(denominateur >= minimum)
