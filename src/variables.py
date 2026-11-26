@@ -102,3 +102,28 @@ def build_liaisons_co2(liaisons, facteurs, annee_debut, annee_fin):
         table[f"co2_avion_t_{annee}"] = passagers_km * facteur["avion"] / 1000
         table[f"co2_tgv_t_{annee}"] = (passagers_km * facteur["tgv"] / 1000).where(~corse)
     return table
+
+
+def build_tcam(debut, fin, nb_annees):
+    # une valeur de départ nulle rend le taux impossible à calculer : NaN
+    return ((fin / debut.where(debut > 0)) ** (1 / nb_annees) - 1) * 100
+
+
+def build_trajectoire(tcam, seuil):
+    return pd.cut(tcam, bins=[-float("inf"), -seuil, seuil, float("inf")],
+                  labels=["déclin", "stable", "croissance"])
+
+def build_part(numerateur, denominateur, minimum):
+    return (numerateur / denominateur * 100).where(denominateur >= minimum)
+
+
+def build_classe_taille(population, bornes, noms):
+    """Classe de taille de chaque commune selon sa population (la dernière classe n'a pas de limite haute)."""
+    return pd.cut(population, bins=bornes + [float("inf")], labels=noms, right=False)
+
+
+def build_profil(tcam, dist_gare_km, seuil_km):
+    desservie = (dist_gare_km <= seuil_km).where(dist_gare_km.notna())
+    croissance = (tcam > 0).map({True: "croissance", False: "déclin ou stable"})
+    gare = desservie.map({True: "desservie", False: "non desservie"})
+    return (croissance + " – " + gare).where(tcam.notna() & desservie.notna()), desservie
