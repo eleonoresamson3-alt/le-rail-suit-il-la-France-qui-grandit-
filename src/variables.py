@@ -25,7 +25,7 @@ def build_communes(contours, population, navettes, parc, voyageurs):
     return communes
 
 def build_gares(sncf, contours):
-    # une ligne par gare, on met ça en format large
+    # une ligne par gare
     gares = sncf.drop_duplicates("code_uic")[["code_uic", "nom_gare", "code_commune", "position_geographique"]].copy()
     # position "latitude, longitude" (texte) transformée en point
     coordonnees = gares["position_geographique"].str.split(",", expand=True).astype(float)
