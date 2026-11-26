@@ -61,3 +61,19 @@ def build_voyageurs_communes(sncf, gares, annee_debut, annee_fin):
     voyageurs = deux_annees.pivot_table(index="code_commune", columns="annee", values="frequentation", aggfunc="sum")
     voyageurs.columns = [f"voyageurs_{int(annee)}" for annee in voyageurs.columns]
     return pd.concat([nb_gares, voyageurs], axis=1).reset_index()
+
+
+def build_distance_gare(contours, gares, crs):
+    # calculs en Lambert 93 : les distances sont en mètres
+    centres = contours[["code_commune", "code_departement", "geometry"]].to_crs(crs)
+    centres["geometry"] = centres.centroid
+    points_gares = gares[["code_uic", "geometry"]].to_crs(crs)
+    # gare la plus proche de chaque centre de commune
+    proches = centres.sjoin_nearest(points_gares, how="left", distance_col="distance_m")
+    # en cas d'égalité, deux gares sont renvoyées : on n'en garde qu'une
+    proches = proches.drop_duplicates("code_commune")
+    proches["dist_gare_km"] = proches["distance_m"] / 1000
+    # Corse : pas de gare SNCF sur l'île, la plus proche serait sur le continent
+    corse = proches["code_departement"].isin(["2A", "2B"])
+    proches.loc[corse, "dist_gare_km"] = float("nan")
+    return proches[["code_commune", "dist_gare_km"]].reset_index(drop=True)
