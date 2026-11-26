@@ -7,6 +7,8 @@ annee_fin: 2023
 # millésime des contours des communes (cartiflette)
 annee_geographie: 2026
 
+# projection pour les calculs de distance (Lambert 93, en mètres)
+crs_calcul: 2154
 dossiers:
   brut: data/raw
   propre: data/clean
