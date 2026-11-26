@@ -102,3 +102,13 @@ def build_liaisons_co2(liaisons, facteurs, annee_debut, annee_fin):
         table[f"co2_avion_t_{annee}"] = passagers_km * facteur["avion"] / 1000
         table[f"co2_tgv_t_{annee}"] = (passagers_km * facteur["tgv"] / 1000).where(~corse)
     return table
+
+
+def build_tcam(debut, fin, nb_annees):
+    # une valeur de départ nulle rend le taux impossible à calculer : NaN
+    return ((fin / debut.where(debut > 0)) ** (1 / nb_annees) - 1) * 100
+
+
+def build_trajectoire(tcam, seuil):
+    return pd.cut(tcam, bins=[-float("inf"), -seuil, seuil, float("inf")],
+                  labels=["déclin", "stable", "croissance"])
