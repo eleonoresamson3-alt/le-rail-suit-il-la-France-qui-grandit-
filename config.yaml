@@ -13,6 +13,10 @@ dossiers:
   brut: data/raw
   propre: data/clean
 
+# classes de taille des communes (habitants en 2023)
+bornes_taille: [0, 500, 2000, 10000, 50000]
+noms_taille: ["moins de 500", "500 à 2 000", "2 000 à 10 000", "10 000 à 50 000", "50 000 et plus"]
+
 # adresses des données
 urls:
   # SDES, parc de véhicules routiers au niveau communal (API DiDo)

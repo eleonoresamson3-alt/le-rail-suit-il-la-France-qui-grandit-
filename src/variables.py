@@ -115,3 +115,15 @@ def build_trajectoire(tcam, seuil):
 
 def build_part(numerateur, denominateur, minimum):
     return (numerateur / denominateur * 100).where(denominateur >= minimum)
+
+
+def build_classe_taille(population, bornes, noms):
+    """Classe de taille de chaque commune selon sa population (la dernière classe n'a pas de limite haute)."""
+    return pd.cut(population, bins=bornes + [float("inf")], labels=noms, right=False)
+
+
+def build_profil(tcam, dist_gare_km, seuil_km):
+    desservie = (dist_gare_km <= seuil_km).where(dist_gare_km.notna())
+    croissance = (tcam > 0).map({True: "croissance", False: "déclin ou stable"})
+    gare = desservie.map({True: "desservie", False: "non desservie"})
+    return (croissance + " – " + gare).where(tcam.notna() & desservie.notna()), desservie
