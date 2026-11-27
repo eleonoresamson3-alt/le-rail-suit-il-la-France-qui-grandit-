@@ -229,3 +229,50 @@ def plot_evolution_frequentation():
     fig.savefig(FIGURES_DIR / "04_voyageurs_base_100.png", dpi=300, bbox_inches="tight")
 
     return fig, ax
+
+
+
+def plot_lorenz_frequentation():
+
+    # Sélection de la fréquentation en 2023
+    gares_annees = pd.read_parquet(CLEAN_DATA_DIR / "base_finale/gares_annees.parquet")
+    gares_annees = gares_annees.copy()
+    gares_annees = gares_annees[gares_annees["annee"] == 2023].copy()
+
+    # Classement des gares de la moins à la plus fréquentée
+    voyageurs = np.sort(gares_annees["voyageurs"].to_numpy())
+
+    # Calcul des parts cumulées
+    part_gares = np.arange(1, len(voyageurs) + 1) / len(voyageurs)
+    part_voyageurs = np.cumsum(voyageurs) / voyageurs.sum()
+
+    # Ajout du point d'origine
+    x = np.insert(part_gares, 0, 0)
+    y = np.insert(part_voyageurs, 0, 0)
+
+    # Calcul du coefficient de Gini
+    gini = 1 - 2 * np.trapezoid(y, x)
+
+    # Création du graphique
+    fig, ax = plt.subplots(figsize=(8, 8))
+
+    ax.plot(x * 100, y * 100, linewidth=2, label="Courbe de Lorenz")
+
+    ax.plot([0, 100], [0, 100], linestyle="--", color="grey", label="Répartition égalitaire")
+
+    ax.set_title(f"Concentration de la fréquentation des gares en 2023\n"
+                 f"Coefficient de Gini : {gini:.3f}")
+    ax.set_xlabel("Part cumulée des gares (%)")
+    ax.set_ylabel("Part cumulée des voyageurs (%)")
+
+    ax.set_xlim(0, 100)
+    ax.set_ylim(0, 100)
+    ax.legend()
+    ax.grid(alpha=0.3)
+
+    plt.tight_layout()
+    plt.show()
+
+    fig.savefig(FIGURES_DIR / "05_courbe_Lorenz_voyageurs.png", dpi=300, bbox_inches="tight")
+
+    return fig, ax
