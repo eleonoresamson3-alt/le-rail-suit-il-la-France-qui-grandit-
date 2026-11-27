@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
-# ---------- 01_donnees : Exploration des contours (cartiflette) ----------
+# ---------- 01_donnees : 1.1 Contours des communes (cartiflette) ----------
 
 #  get_contours permet de télécharger la carte de la France avec ses contours et la répartition en commune
 def get_contours(niveau, annee):
@@ -38,7 +38,7 @@ def get_contours(niveau, annee):
     return contours
 
 
-# ---------- 01_donnees : Population des communes (INSEE) ----------
+# ---------- 01_donnees : 1.2 Population des communes (INSEE) ----------
 
 def _get_base(nom, config):
     """Ouvrir une archive INSEE en la téléchargeant seulement si nécessaire."""
@@ -101,14 +101,14 @@ def get_population(config):
     return _get_base("population", config)
 
 
-# ---------- 01_donnees : Modes de déplacement domicile–travail (INSEE) ----------
+# ---------- 01_donnees : 1.3 Modes de déplacement domicile–travail (INSEE) ----------
 
 def get_navettes(config):
     """Lire les navettes INSEE en exploitation principale."""
     return _get_base("navettes", config)
 
 
-# ---------- 01_donnees : Exploration des jeu de données SNCF ----------
+# ---------- 01_donnees : 1.4 Gares et fréquentation (SNCF) ----------
 
 # get_gares permet de télécharger le jeu de données sur les gares
 def get_gares():
@@ -137,7 +137,7 @@ def get_frequentation():
     return df
 
 
-# ---------- 01_donnees : Exploration du parc automobile (SDES) ----------
+# ---------- 01_donnees : 1.5 Parc automobile (SDES) ----------
 
 #téléchargement et stockage unique de la base de données, et notamment des variables qui nous intéressent
 def get_parc_auto(url, annee_debut, annee_fin):
@@ -156,7 +156,7 @@ def get_parc_auto(url, annee_debut, annee_fin):
     return pd.read_csv(chemin, sep=";", dtype={"COMMUNE_CODE": str})
 
 
-# ---------- 01_donnees : Exploration du trafic aérien (DGAC, série PAP) ----------
+# ---------- 01_donnees : 1.6 Trafic aérien (DGAC, série PAP), bonus ----------
 
 #  récupérer le dossier raw des données dgac
 def get_dgac(url, annees):
@@ -178,7 +178,7 @@ def get_dgac(url, annees):
     return pd.concat(tables, ignore_index=True) # assemble les années en un seul tableau
 
 
-# ---------- 01_donnees : Exploration des facteurs d'émission (ADEME, Base Carbone) ----------
+# ---------- 01_donnees : 1.7 Facteurs d'émission (ADEME, Base Carbone), bonus ----------
 
 #get_base_carbone permet de récupérer la base de données sur les émissions carbone une seule fois puis stockée. 
 def get_base_carbone(url, identifiants):
