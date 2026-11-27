@@ -1,3 +1,4 @@
+from matplotlib.lines import Line2D
 """Fonctions plot_ et map_ : graphiques et cartes."""
 
 import folium
@@ -198,5 +199,79 @@ def plot_quadrants(communes, titre, chemin):
     ax.set_title(titre, loc="left", fontweight="bold")
     fig.text(0, -0.02, "Communes ayant au moins une gare. Valeurs écrêtées à ±10 % par an.\n"
              "Sources : INSEE, recensements 2017 et 2023 ; SNCF, fréquentation en gares. Champ : France métropolitaine.",
+             fontsize=8, color="#666666", va="top")
+    fig.savefig(chemin, dpi=200, bbox_inches="tight")
+
+
+# barres horizontales : CO2 de l'avion et des mêmes passagers en TGV, pour les liaisons qui émettent le plus
+def plot_co2_avion_tgv(liaisons, annee, nb, titre, chemin):
+    # hors Corse (pas de train possible) ; les nb liaisons qui émettent le plus, la plus grosse en haut
+    haut = liaisons.dropna(subset=[f"co2_tgv_t_{annee}"]).nlargest(nb, f"co2_avion_t_{annee}").iloc[::-1]
+    noms = (haut["nom_aeroport_1"].str.title() + " – " + haut["nom_aeroport_2"].str.title()
+            + " (" + haut["dist_km"].astype(str) + " km)")
+    y = np.arange(len(haut))
+    fig, ax = plt.subplots(figsize=(9, 6))
+    ax.barh(y + 0.2, haut[f"co2_avion_t_{annee}"] / 1000, height=0.4, color="#e4572e", label="avion")
+    ax.barh(y - 0.2, haut[f"co2_tgv_t_{annee}"] / 1000, height=0.4, color="#257de0", label="mêmes passagers en TGV")
+    ax.set_yticks(y, noms)
+    ax.set_xlabel(f"CO2 émis en {annee} (milliers de tonnes équivalent CO2)")
+    ax.spines[["top", "right"]].set_visible(False)
+    ax.legend(frameon=False, loc="lower right")
+    ax.set_title(titre, loc="left", fontweight="bold")
+    fig.text(0, -0.02, "Passagers × distance à vol d'oiseau × facteur d'émission (avion : 101-220 sièges, 500-1 000 km, avec traînées ;\n"
+             "TGV). Passagers publiés (minimum, secret statistique). Sources : DGAC ; ADEME, Base Carbone. Liaisons hors Corse.",
+             fontsize=8, color="#666666", va="top")
+    fig.savefig(chemin, dpi=200, bbox_inches="tight")
+
+
+# nuage : évolution des passagers aériens (mêmes mois publiés) selon la distance de la liaison
+def plot_avion_distance(liaisons, annee_debut, annee_fin, titre, chemin):
+    donnees = liaisons[liaisons["mois_communs"] > 0].copy()
+    # évolution sur les mois publiés les deux années, en %
+    donnees["evolution"] = (donnees[f"passagers_communs_{annee_fin}"] / donnees[f"passagers_communs_{annee_debut}"] - 1) * 100
+    corse = donnees["code_oaci_1"].str.startswith("LFK") | donnees["code_oaci_2"].str.startswith("LFK")
+    fig, ax = plt.subplots(figsize=(9, 5.5))
+    # surface du point proportionnelle aux passagers de la première année
+    for groupe, couleur, nom in [(~corse, "#e4572e", "continent"), (corse, "#a6a6a6", "vers la Corse (pas de train)")]:
+        ax.scatter(donnees.loc[groupe, "dist_km"], donnees.loc[groupe, "evolution"],
+                   s=donnees.loc[groupe, f"passagers_communs_{annee_debut}"] / 2000,
+                   color=couleur, alpha=0.6, edgecolor="white", linewidth=0.5, label=nom)
+    ax.axhline(0, color="#666666", linewidth=0.8)
+    ax.set_xlabel("Distance entre les deux aéroports (km)")
+    ax.set_ylabel(f"Évolution des passagers, {annee_debut}-{annee_fin} (%)")
+    ax.spines[["top", "right"]].set_visible(False)
+    ax.legend(frameon=False, loc="upper right")
+    ax.set_title(titre, loc="left", fontweight="bold")
+    fig.text(0, -0.02, f"Liaisons intérieures publiées les deux années, comparées sur les mêmes mois (secret statistique).\n"
+             f"Taille du point : passagers {annee_debut} sur ces mois. Source : DGAC, trafic par paire d'aéroports.",
+             fontsize=8, color="#666666", va="top")
+    fig.savefig(chemin, dpi=200, bbox_inches="tight")
+
+# carte des liaisons aériennes : un trait entre les deux villes, épaisseur = passagers
+def map_liaisons(communes, villes, liaisons, annee, titre, chemin):
+    # position de chaque aéroport : le centre de la ville qu'il dessert (table du config), en Lambert 93
+    centres = communes.to_crs(2154).set_index("code_commune").geometry.centroid
+    position = villes.set_index("code_oaci")["code_commune"].map(centres)
+    traits = liaisons.dropna(subset=[f"passagers_{annee}"]).sort_values(f"passagers_{annee}")
+    fig, ax = plt.subplots(figsize=(9, 9))
+    communes.to_crs(2154).plot(ax=ax, color="#eeeeee", linewidth=0)
+    for _, l in traits.iterrows():
+        depart, arrivee = position[l["code_oaci_1"]], position[l["code_oaci_2"]]
+        # vers la Corse : en gris (pas de train possible)
+        corse = l["code_oaci_1"].startswith("LFK") or l["code_oaci_2"].startswith("LFK")
+        ax.plot([depart.x, arrivee.x], [depart.y, arrivee.y], color="#8c8c8c" if corse else "#e4572e",
+                linewidth=max(l[f"passagers_{annee}"] / 2e5, 0.5), alpha=0.8, solid_capstyle="round")
+    # nom des villes
+    for _, v in villes.drop_duplicates("ville").iterrows():
+        point = position[v["code_oaci"]]
+        ax.text(point.x, point.y, v["ville"], fontsize=8, ha="center", va="bottom")
+    legende = [Line2D([], [], color="#e4572e", linewidth=n / 2e5, label=texte)
+               for n, texte in [(1e5, "100 000 passagers"), (5e5, "500 000 passagers"), (1e6, "1 million de passagers")]]
+    legende.append(Line2D([], [], color="#8c8c8c", linewidth=3, label="vers la Corse (pas de train)"))
+    ax.legend(handles=legende, loc="lower left", frameon=False, title=f"Passagers {annee}", alignment="left")
+    ax.set_axis_off()
+    ax.set_title(titre, loc="left", fontweight="bold")
+    fig.text(0.02, 0.06, "Trait entre les villes desservies par les deux aéroports (Paris : Orly et Charles-de-Gaulle confondus sur la carte).\n"
+             "Passagers publiés (minimum, secret statistique). Source : DGAC, trafic par paire d'aéroports.",
              fontsize=8, color="#666666", va="top")
     fig.savefig(chemin, dpi=200, bbox_inches="tight")

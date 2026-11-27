@@ -14,9 +14,8 @@ dossiers:
   propre: data/clean
 
 # classes de taille des communes (habitants en 2023)
-bornes_taille: [0, 500, 2000, 10000, 50000]
-noms_taille: ["moins de 500", "500 à 2 000", "2 000 à 10 000", "10 000 à 50 000", "50 000 et plus"]
-
+bornes_taille: [0, 500, 2000, 5000, 10000, 50000]
+noms_taille: ["moins de 500", "500 à 2 000", "2 000 à 5 000", "5 000 à 10 000", "10 000 à 50 000", "50 000 et plus"]
 # adresses des données
 urls:
   # SDES, parc de véhicules routiers au niveau communal (API DiDo)
@@ -55,3 +54,24 @@ codes_insee:
   naissances: A_VERIFIER
   deces: A_VERIFIER
   modes_transport: A_VERIFIER
+
+aeroports_villes:
+  LFPG: {ville: Paris, code_commune: "75056"}
+  LFPO: {ville: Paris, code_commune: "75056"}
+  LFML: {ville: Marseille, code_commune: "13055"}
+  LFMN: {ville: Nice, code_commune: "06088"}
+  LFBO: {ville: Toulouse, code_commune: "31555"}
+  LFLL: {ville: Lyon, code_commune: "69123"}
+  LFBD: {ville: Bordeaux, code_commune: "33063"}
+  LFRS: {ville: Nantes, code_commune: "44109"}
+  LFQQ: {ville: Lille, code_commune: "59350"}
+  LFST: {ville: Strasbourg, code_commune: "67482"}
+  LFMT: {ville: Montpellier, code_commune: "34172"}
+  LFRN: {ville: Rennes, code_commune: "35238"}
+  LFRB: {ville: Brest, code_commune: "29019"}
+  LFBZ: {ville: Biarritz, code_commune: "64122"}
+  LFKJ: {ville: Ajaccio, code_commune: "2A004"}
+  LFKB: {ville: Bastia, code_commune: "2B033"}
+  LFKC: {ville: Calvi, code_commune: "2B050"}
+  LFKF: {ville: Figari, code_commune: "2A114"}
+  LFSB: {ville: Mulhouse, code_commune: "68224"}
