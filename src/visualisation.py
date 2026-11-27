@@ -92,7 +92,7 @@ def map_distance_gare(communes, titre, chemin):
     ax.set_axis_off()
     ax.set_title(titre, loc="left", fontweight="bold")
     fig.savefig(chemin, dpi=200, bbox_inches="tight")
-    
+
 # boîtes à moustaches: croissance des voyageurs selon la trajectoire de la population
 def plot_voyageurs_trajectoire(communes, titre, chemin):
     donnees = communes.dropna(subset=["tcam_voyageurs_2017_2023", "trajectoire"])
@@ -106,5 +106,21 @@ def plot_voyageurs_trajectoire(communes, titre, chemin):
     ax.axhline(0, color="#666666", linewidth=0.8)
     ax.set_xlabel("Trajectoire de la population, 2017-2023")
     ax.set_ylabel("Croissance des voyageurs (% par an)")
+    ax.set_title(titre, loc="left", fontweight="bold")
+    fig.savefig(chemin, dpi=200, bbox_inches="tight")
+
+# Nuage de points: part de la voiture selon la distance à la gare
+def plot_voiture_distance(communes, titre, chemin):
+    donnees = communes.dropna(subset=["dist_gare_km", "part_voiture_2023"])
+    # médiane de la part de la voiture par tranche de 2 km (milieu de la tranche en abscisse)
+    tranche = (donnees["dist_gare_km"] // 2) * 2 + 1
+    par_tranche = donnees.groupby(tranche)["part_voiture_2023"].agg(["median", "count"])
+    medianes = par_tranche.loc[par_tranche["count"] >= 20, "median"]   # tranches d'au moins 20 communes
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.scatter(donnees["dist_gare_km"], donnees["part_voiture_2023"], s=6, color="#9c9c9c", alpha=0.4, label="une commune")
+    ax.plot(medianes.index, medianes.values, color="#e4572e", linewidth=2, marker="o", markersize=4, label="médiane par tranche de 2 km")
+    ax.set_xlabel("Distance du centre de la commune à la gare la plus proche (km)")
+    ax.set_ylabel("Actifs allant travailler en voiture (%)")
+    ax.legend(frameon=False, loc="lower right")
     ax.set_title(titre, loc="left", fontweight="bold")
     fig.savefig(chemin, dpi=200, bbox_inches="tight")
