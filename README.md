@@ -36,10 +36,10 @@ Les fichiers bruts ne sont téléchargés qu'une fois, dans `data/raw/`.
 
 ```
 config.yaml          paramètres : années, adresses des données, seuils
-src/collecte.py      get_    : téléchargement des données brutes
+src/collecte.py      get_    : téléchargement des données brutes (et des régions)
 src/nettoyage.py     clean_  : nettoyage de chaque base
-src/jointure.py      join_   : réunion des deux bases SNCF
-src/variables.py     build_  : jointures communales et variables construites
+src/jointure.py      join_, build_ : bases SNCF, gares rattachées aux communes, table des communes
+src/variables.py     build_  : variables construites (croissance, parts, profils, CO2)
 src/visualisation.py plot_, map_ : graphiques et cartes
 src/analyse_mobilites.py       statistiques et ACP
 ```

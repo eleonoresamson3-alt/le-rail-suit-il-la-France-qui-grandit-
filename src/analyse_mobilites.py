@@ -1,4 +1,7 @@
-"""Fonctions communes pour les statistiques descriptives et l'ACP."""
+"""Étape 4 : statistiques descriptives et ACP (notebook 05_analyse_mobilites).
+
+Lit la table data/clean/base_finale/base_finale_communes_variables.parquet.
+"""
 
 import math
 import matplotlib.pyplot as plt
@@ -6,6 +9,8 @@ import numpy as np
 import pandas as pd
 from matplotlib.lines import Line2D
 
+
+# ---------- 05_analyse_mobilites : 0. Données et contrôles ----------
 
 def arrondir_tableau(tableau, decimales=2, lignes=None):
     """Arrondit les mesures et garde les comptes entiers lisibles."""
@@ -31,6 +36,8 @@ def arrondir_tableau(tableau, decimales=2, lignes=None):
     return resultat
 
 
+# ---------- 05_analyse_mobilites : 1. Où va la population ? ----------
+
 def synthese_croissance_par(groupe):
     """Résume la croissance annuelle des communes d'un groupe."""
     return groupe.agg(
@@ -40,6 +47,8 @@ def synthese_croissance_par(groupe):
         croissance_annuelle_moyenne_pct=("croissance_pop_an_%", "mean"),
     ).round(2)
 
+
+# ---------- 05_analyse_mobilites : 2. Comment évolue la fréquentation des gares ? ----------
 
 def indice_gini(valeurs):
     """Calcule le Gini d'une série de volumes non négatifs."""
@@ -52,6 +61,8 @@ def indice_gini(valeurs):
         - (valeurs.size + 1) / valeurs.size
     )
 
+
+# ---------- 05_analyse_mobilites : 4. Qui dépend de la voiture, et qui vit loin d'une gare ? ----------
 
 def resume_part_voiture(groupe):
     """Résume les parts voiture communales et leur évolution."""
@@ -66,6 +77,8 @@ def resume_part_voiture(groupe):
         evolution_mediane_pp=("evolution_part_voiture_pp", "median"),
     ).round(2)
 
+
+# ---------- 05_analyse_mobilites : 5. Enrichissements statistiques descriptifs ----------
 
 def contribution_demographique(frame, hausse_nationale):
     """Calcule la contribution positive d'une strate à la hausse nationale."""
@@ -135,6 +148,8 @@ def intensite_ternaire(serie):
         result.loc[negatifs & (-serie > seuil_negatif)] = "fort"
     return result
 
+
+# ---------- 05_analyse_mobilites : 6. ACP : comment la lire ----------
 
 def calculer_acp(tableau):
     """Calcule l'ACP sur un tableau de variables quantitatives."""
