@@ -11,3 +11,4 @@ data/raw/*
 # tables propres intermédiaires : recréées par le notebook 01_donnees (seule la base finale est gardée)
 data/clean/*
 !data/clean/base_finale/
+!data/raw/.gitkeep
