@@ -4,12 +4,6 @@ _Auteurs : Mathilde DECOUCHON; Tamsir NDONG; Eléonore SAMSON_
 
 Projet de Python pour la data science (ENSAE, 2e année 2026)
 
-Entre 2017 et 2023, la population en France métropolitaine continuait de suivre une dynamique de croissance.
-Cependant, cette dynamique n'est pas uniforme sur le territoire : certaines communes connaissent une augmentation et d'autres une baisse de leur population.
-Sur la même période, les enjeux de développement durable et notamment de décarbonation des transports ont gagné en importance.
-Le principal levier de cette transition dans le domaine des transports est le rail.
-Aussi peut-on se demander si la fréquentation des gares suit une trajectoire similaire à celle de la population ? A l'inverse, qui dépend de la voiture faute de gare proche ?
-
 Entre 2017 et 2023, la population de France métropolitaine a poursuivi sa croissance. Celle-ci est inégalement répartie sur le territoire : certaines communes ont gagné des habitants, tandis que d'autres en ont perdu.
 
 Parallèlement, les enjeux de développement durable, et notamment la décarbonation des transports, ont pris une place croissante dans les politiques publiques. Dans cette transition, le transport ferroviaire constitue un levier essentiel.
