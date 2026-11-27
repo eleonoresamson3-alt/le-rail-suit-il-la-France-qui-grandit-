@@ -10,7 +10,7 @@ from src.collecte import get_frequentation
 from src.collecte import get_gares
 
 
-# ---------- 01_donnees : Exploration des contours (cartiflette) ----------
+# ---------- 01_donnees : 1.1 Contours des communes (cartiflette) ----------
 
 # cette fonction permet de renommer nos 5 colonnes pour standardiser nos variables entre les bases de données pour les jointures
 def clean_contours(communes):
@@ -31,7 +31,7 @@ def clean_contours(communes):
     return propre.reset_index(drop=True) #on renvoie notre base de données, chaque observation est numérotée de 0 à 34 745 
 
 
-# ---------- 01_donnees : Population des communes (INSEE) ----------
+# ---------- 01_donnees : 1.2 Population des communes (INSEE) ----------
 
 def _selection(brut, nom, config):
     """Garder le champ géographique demandé et vérifier les valeurs de base."""
@@ -127,7 +127,7 @@ def clean_population(brut, config):
     return propre
 
 
-# ---------- 01_donnees : Modes de déplacement domicile–travail (INSEE) ----------
+# ---------- 01_donnees : 1.3 Modes de déplacement domicile–travail (INSEE) ----------
 
 def clean_navettes(brut, config):
     """Préparer les effectifs d'actifs et leurs modes de déplacement.
@@ -182,7 +182,7 @@ def clean_navettes(brut, config):
     return propre
 
 
-# ---------- 01_donnees : Exploration des jeu de données SNCF ----------
+# ---------- 01_donnees : 1.4 Gares et fréquentation (SNCF) ----------
 
 # la fonction clean_gares renvoie et enregistre un dataframe conservant seulement les colonnes qui nous intéresse et en harmonisant les noms et les types
 def clean_gares():
@@ -262,7 +262,7 @@ def clean_frequentation():
     return df_long
 
 
-# ---------- 01_donnees : Exploration du parc automobile (SDES) ----------
+# ---------- 01_donnees : 1.5 Parc automobile (SDES) ----------
 
 # une ligne par commune : voitures des particuliers au début et à la fin de la période
 def clean_parc_auto(parc, annee_debut, annee_fin):
@@ -285,7 +285,7 @@ def clean_parc_auto(parc, annee_debut, annee_fin):
     return propre
 
 
-# ---------- 01_donnees : Exploration du trafic aérien (DGAC, série PAP) ----------
+# ---------- 01_donnees : 1.6 Trafic aérien (DGAC, série PAP), bonus ----------
 
 #création d'une table: chaque ligne correspond à une liaison et les colonnes synthètisent toutes les données sur cette liaison
 def clean_dgac(pap, annee_debut, annee_fin):
@@ -325,7 +325,7 @@ def clean_dgac(pap, annee_debut, annee_fin):
     return liaisons
 
 
-# ---------- 01_donnees : Exploration des facteurs d'émission (ADEME, Base Carbone) ----------
+# ---------- 01_donnees : 1.7 Facteurs d'émission (ADEME, Base Carbone), bonus ----------
 
 #  on nettoie la base de données pour qu'elle ne garde que les données essentielles à l'analyse, avec une ligne = un mode
 def clean_base_carbone(bc, modes):

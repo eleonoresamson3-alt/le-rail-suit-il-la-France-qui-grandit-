@@ -1,3 +1,6 @@
 .venv/
 __pycache__/
 .ipynb_checkpoints/
+
+# téléchargement INSEE interrompu (fichier temporaire de src/collecte.py)
+data/raw/*.part

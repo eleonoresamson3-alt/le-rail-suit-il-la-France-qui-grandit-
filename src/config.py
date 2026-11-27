@@ -1,3 +1,8 @@
+"""Chemins des dossiers du projet, calculés à partir de la racine du projet.
+
+Utilisés par les fonctions SNCF (collecte.py, nettoyage.py, jointure.py) et par les graphiques 1 à 6
+(visualisation.py). Les autres paramètres (années, seuils, adresses des données) sont dans config.yaml.
+"""
 from pathlib import Path
 
 # Racine du projet
