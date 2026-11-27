@@ -2,6 +2,7 @@
 
 import geopandas as gpd
 import pandas as pd
+from cartiflette import carti_download
 
 def build_jointure(gauche, droite, nom):
     # on fait un left join à partir de la clé code_commune
@@ -109,9 +110,19 @@ def build_tcam(debut, fin, nb_annees):
     return ((fin / debut.where(debut > 0)) ** (1 / nb_annees) - 1) * 100
 
 
+def build_solde_naturel(naissances, deces):
+    return naissances - deces
+
+
+def build_solde_migratoire(pop_debut, pop_fin, solde_naturel):
+    return (pop_fin - pop_debut) - solde_naturel
+
+
+
 def build_trajectoire(tcam, seuil):
     return pd.cut(tcam, bins=[-float("inf"), -seuil, seuil, float("inf")],
                   labels=["déclin", "stable", "croissance"])
+
 
 def build_part(numerateur, denominateur, minimum):
     return (numerateur / denominateur * 100).where(denominateur >= minimum)
@@ -136,3 +147,34 @@ def build_parts_croissance(communes, gares_annees, annee):
     voyageurs = gares_annees[gares_annees["annee"] == annee].merge(communes[["code_commune", "tcam_pop_2017_2023"]], on="code_commune")
     part_voy = voyageurs.loc[voyageurs["tcam_pop_2017_2023"] > 0, "voyageurs"].sum() / voyageurs["voyageurs"].sum() * 100
     return part_pop, part_voy
+
+
+def build_soldes_regionaux(communes):
+    # 1. Copie de la base
+    communes = communes.copy()
+    # 2. Ajout des soldes à partir des fonctions build_solde_
+    communes["solde_naturel"] = build_solde_naturel(communes["naissances_2017_2022"],
+             communes["deces_2017_2022"])
+    communes["solde_migratoire"] = build_solde_migratoire(communes["pop_2017"], communes["pop_2023"],
+             communes["solde_naturel"])
+    communes["tcam_pop_2017_2023"] = build_tcam(communes["pop_2017"], communes["pop_2023"], 6)
+    # 3. Agrégation des données communales par région
+    regional = (communes.groupby("code_region", as_index=False).agg(pop_2017=("pop_2017", "sum"),
+                 pop_2023=("pop_2023", "sum"),solde_naturel=("solde_naturel", "sum"),
+                 solde_migratoire=("solde_migratoire", "sum")))
+    # 5. Calcul de la croissance annuelle moyenne régionale
+    regional["tcam_pop_2017_2023"] = ((regional["pop_2023"] / regional["pop_2017"]) ** (1/6) - 1) * 100
+    # 6. Classement des régions par croissance
+    regional = regional.sort_values("tcam_pop_2017_2023", ascending=False)
+    return regional
+
+
+def build_region():
+    """Récupère les régions et leurs codes."""
+
+    regions = carti_download(values="France", borders="REGION",
+    filter_by="FRANCE_ENTIERE_DROM_RAPPROCHES",year=2025, simplification=50)
+
+    regions = regions.rename(columns={"LIBELLE_REGION": "nom_region", "INSEE_REG": "code_region"})
+
+    return regions

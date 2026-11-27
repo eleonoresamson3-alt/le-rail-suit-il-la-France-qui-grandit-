@@ -2,9 +2,30 @@
 
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
+import pandas as pd
+import geopandas as gpd
+import numpy as np
+
+from pathlib import Path
+
+from src.config import CLEAN_DATA_DIR, FIGURES_DIR
+from src.variables import build_tcam
+from src.variables import build_solde_naturel
+from src.variables import build_solde_migratoire
+from src.variables import build_soldes_regionaux
+from src.variables import build_region
+
 
 # déclin en rouge, stable en gris, croissance en bleu (même palette pour toutes les cartes)
 COULEURS_TRAJECTOIRE = ListedColormap(["#f19d9b", "#efefef", "#84b9f3"])
+
+COULEURS_TRAJECTOIRE_LONG = ListedColormap([
+    "#f19d9b",  # Déclin fort : rouge clair
+    "#f6c5c3",  # Déclin modéré : rouge très clair
+    "#efefef",  # Stabilité : gris
+    "#b3d3f5",  # Croissance modérée : bleu clair
+    "#84b9f3"   # Croissance forte : bleu
+])
 
 # carte des gares sur la trajectoire démographique des communes
 def map_gares(communes, gares, gares_annees, annee, titre, chemin):
@@ -29,3 +50,91 @@ def map_gares(communes, gares, gares_annees, annee, titre, chemin):
     ax.set_axis_off()
     ax.set_title(titre, loc="left", fontweight="bold")
     fig.savefig(chemin, dpi=200, bbox_inches="tight")
+
+
+def map_croissance_demographique() : 
+
+    # Chargement de la table
+    communes = gpd.read_parquet(CLEAN_DATA_DIR / "base_finale/base_finale_communes.parquet")
+    communes = communes.copy()
+
+    # Ajout du tcam à partir de la fonction build_tcam()
+    communes["tcam_pop_2017_2023"] = build_tcam(communes["pop_2017"], communes["pop_2023"], 6)
+
+
+    # Création de la figure
+    fig, ax = plt.subplots(figsize=(12, 10))
+
+    # Tracé de la carte
+    communes.plot(column="tcam_pop_2017_2023", cmap= COULEURS_TRAJECTOIRE_LONG, scheme="quantiles",
+                  k=5, legend=True, edgecolor="white", linewidth=0.05,
+                  ax=ax,legend_kwds={"title": "Croissance annuelle moyenne (%)","loc": "lower left"})
+
+    # Titre
+    ax.set_title("Une population en croissance autour des grandes villes", fontsize=14, pad=15)
+
+    # Suppression des axes
+    ax.set_axis_off()
+
+    # Source
+    #fig.text(1, 0.05, "Source : INSEE, Recensements de la population 2017 et 2023.")
+    "a repositionner, pour l'instant rend la légende illisible"
+
+    plt.tight_layout()
+
+    # Enregistrer
+    fig.savefig(FIGURES_DIR / "01_croissance_demographique.png", dpi=300, bbox_inches="tight")
+
+    return fig, ax
+
+
+def plot_soldes_regionaux():
+
+    # Récupération des variables
+    communes = gpd.read_parquet(CLEAN_DATA_DIR / "base_finale/base_finale_communes.parquet")
+    regional = build_soldes_regionaux(communes)
+    regional = regional.merge(build_region(), on="code_region", how="left")
+    regional["evolution_population"] = (regional["pop_2023"] - regional["pop_2017"])
+    regional = regional.sort_values(by="evolution_population", ascending=False)
+    
+    # Position des régions sur l'axe vertical
+    positions = np.arange(len(regional))
+
+    # Dimensions de la figure
+    fig, ax = plt.subplots(figsize=(12, 8))
+
+    # Barres horizontales
+    hauteur = 0.35
+
+    ax.barh(positions - hauteur/2,regional["solde_naturel"],height=hauteur,label="Solde naturel")
+
+    ax.barh(positions + hauteur/2,regional["solde_migratoire"],height=hauteur,label="Solde migratoire apparent")
+
+    # Noms des régions
+    ax.set_yticks(positions)
+    ax.set_yticklabels(regional["nom_region"])
+
+    # Ordre des régions : croissance décroissante
+    ax.invert_yaxis()
+
+    # Ligne verticale à zéro
+    ax.axvline(0, color="black", linewidth=0.8)
+
+    # Titres et axes
+    ax.set_title("Les soldes naturel et migratoire expliquent les dynamiques régionales",fontsize=14)
+
+    ax.set_xlabel("Nombre d'habitants")
+    ax.set_ylabel("Région")
+
+    ax.legend()
+
+    # Source
+    fig.text(0.1, 0.02,"Source : INSEE, Recensements de la population 2017 et 2023.")
+
+    plt.tight_layout()
+
+    # Enregistrer
+    fig.savefig(FIGURES_DIR / "02_soldes_regionaux.png", dpi=300, bbox_inches="tight")
+
+
+    return fig, ax
