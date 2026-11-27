@@ -173,3 +173,30 @@ def map_profils(communes, titre, chemin):
              "Sources : INSEE, recensements 2017 et 2023 ; SNCF. Champ : France métropolitaine hors Corse.",
              fontsize=8, color="#666666", va="top")
     fig.savefig(chemin, dpi=200, bbox_inches="tight")
+
+
+# nuage : croissance de la population × croissance des voyageurs, en 4 quadrants (communes avec gare)
+def plot_quadrants(communes, titre, chemin):
+    donnees = communes.dropna(subset=["tcam_pop_2017_2023", "tcam_voyageurs_2017_2023"])
+    # écrêtage à ±10 % par an : les valeurs plus fortes sont ramenées au bord du graphique
+    x = donnees["tcam_pop_2017_2023"].clip(-10, 10)
+    y = donnees["tcam_voyageurs_2017_2023"].clip(-10, 10)
+    fig, ax = plt.subplots(figsize=(8, 8))
+    ax.scatter(x, y, s=8, color="#191919", alpha=0.3)
+    ax.axhline(0, color="#666666", linewidth=0.8)
+    ax.axvline(0, color="#666666", linewidth=0.8)
+    # nombre de communes dans chaque quadrant, écrit dans son coin
+    for signe_x, signe_y in [(1, 1), (-1, 1), (-1, -1), (1, -1)]:
+        n = ((signe_x * x > 0) & (signe_y * y > 0)).sum()
+        sens = f"population {'+' if signe_x > 0 else '−'}, voyageurs {'+' if signe_y > 0 else '−'}"
+        ax.text(signe_x * 9.5, signe_y * 9, f"{n} communes\n{sens}", ha="right" if signe_x > 0 else "left",
+                va="top" if signe_y > 0 else "bottom", fontweight="bold")
+    ax.set_xlim(-10.5, 10.5)
+    ax.set_ylim(-10.5, 10.5)
+    ax.set_xlabel("Croissance de la population, 2017-2023 (% par an)")
+    ax.set_ylabel("Croissance des voyageurs des gares, 2017-2023 (% par an)")
+    ax.set_title(titre, loc="left", fontweight="bold")
+    fig.text(0, -0.02, "Communes ayant au moins une gare. Valeurs écrêtées à ±10 % par an.\n"
+             "Sources : INSEE, recensements 2017 et 2023 ; SNCF, fréquentation en gares. Champ : France métropolitaine.",
+             fontsize=8, color="#666666", va="top")
+    fig.savefig(chemin, dpi=200, bbox_inches="tight")
