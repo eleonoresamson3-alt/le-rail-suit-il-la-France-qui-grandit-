@@ -184,3 +184,48 @@ def plot_hist_croissance():
     fig.savefig(FIGURES_DIR / "03_histogramme_croissance.png", dpi=300, bbox_inches="tight")
 
     return fig, ax
+
+
+
+def plot_evolution_frequentation():
+
+    # Copie et sélection des données
+    gares_annees = pd.read_parquet(CLEAN_DATA_DIR / "base_finale/gares_annees.parquet")
+    gares_annees = gares_annees.copy()
+
+    gares_annees = gares_annees[gares_annees["segmentation_drg"].notna()]
+
+    # Agrégation des voyageurs par année et segmentation
+    evolution = (gares_annees.groupby(["annee", "segmentation_drg"])["voyageurs"].sum().unstack())
+
+    # Passage en base 100 en 2019
+    evolution = evolution.div(evolution.loc[2019]) * 100
+
+    # Création du graphique
+    fig, ax = plt.subplots(figsize=(11, 6))
+
+    for categorie in ["A", "B", "C"]:
+        if categorie in evolution.columns:
+            ax.plot(evolution.index, evolution[categorie], marker="o", linewidth=2, 
+                    label=f"Catégorie {categorie}")
+
+    # Repère Covid
+    ax.axvline(x=2020, color="grey", linestyle="--", alpha=0.8, label="Covid-19")
+
+    # Mise en forme
+    ax.axhline(100, color="black", linewidth=0.8, alpha=0.5)
+
+    ax.set_title("Évolution de la fréquentation des gares par segmentation DRG")
+    ax.set_xlabel("Année")
+    ax.set_ylabel("Indice de fréquentation (base 100 en 2019)")
+
+    ax.set_xticks(range(2017, 2024))
+    ax.legend(title="Segmentation")
+    ax.grid(axis="y", alpha=0.3)
+
+    plt.tight_layout()
+    plt.show()
+
+    fig.savefig(FIGURES_DIR / "04_voyageurs_base_100.png", dpi=300, bbox_inches="tight")
+
+    return fig, ax
