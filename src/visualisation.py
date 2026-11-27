@@ -16,6 +16,10 @@ COULEURS_DISTANCE = ListedColormap(["#fde0c5", "#f6a15c", "#e4572e", "#a8201a"])
 NOMS_VARIABLES = {"tcam_pop_2017_2023": "Croissance population", "tcam_voyageurs_2017_2023": "Croissance voyageurs",
                   "part_voiture_2023": "Part voiture", "voitures_1000_hab_2023": "Voitures / 1 000 hab.",
                   "dist_gare_km": "Distance à la gare", "densite": "Densité"}
+# ordre et couleurs des trajectoires, pour les graphiques (mêmes couleurs que sur les cartes)
+ORDRE_TRAJECTOIRE = ["déclin", "stable", "croissance"]
+COULEURS_TRAJECTOIRE_LISTE = ["#f19d9b", "#efefef", "#84b9f3"]
+
 
 def map_gares(communes, gares, gares_annees, annee, titre, chemin):
     """Carte des gares (taille = voyageurs) sur la trajectoire démographique des communes."""
@@ -86,5 +90,21 @@ def map_distance_gare(communes, titre, chemin):
                missing_kwds={"color": "#e0e0e0", "label": "pas de gare SNCF"},
                legend_kwds={"loc": "lower left", "title": "Distance à la gare la plus proche"})
     ax.set_axis_off()
+    ax.set_title(titre, loc="left", fontweight="bold")
+    fig.savefig(chemin, dpi=200, bbox_inches="tight")
+    
+# boîtes à moustaches: croissance des voyageurs selon la trajectoire de la population
+def plot_voyageurs_trajectoire(communes, titre, chemin):
+    donnees = communes.dropna(subset=["tcam_voyageurs_2017_2023", "trajectoire"])
+    fig, ax = plt.subplots(figsize=(8, 5))
+    # showfliers=False : on masque les valeurs extrêmes
+    sns.boxplot(data=donnees, x="trajectoire", y="tcam_voyageurs_2017_2023", order=ORDRE_TRAJECTOIRE,
+                hue="trajectoire", palette=COULEURS_TRAJECTOIRE_LISTE, showfliers=False, legend=False, width=0.5, ax=ax)
+    # nombre de communes sous chaque boîte
+    effectifs = donnees["trajectoire"].value_counts()
+    ax.set_xticks(range(3), [f"{t}\n({effectifs[t]} communes)" for t in ORDRE_TRAJECTOIRE])
+    ax.axhline(0, color="#666666", linewidth=0.8)
+    ax.set_xlabel("Trajectoire de la population, 2017-2023")
+    ax.set_ylabel("Croissance des voyageurs (% par an)")
     ax.set_title(titre, loc="left", fontweight="bold")
     fig.savefig(chemin, dpi=200, bbox_inches="tight")
