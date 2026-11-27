@@ -1,10 +1,16 @@
-"""Fonctions clean_ : nettoient chaque base"""
+"""Étape 1 : nettoyage (notebook 01_donnees).
+
+Fonctions clean_ : reçoivent les données brutes de collecte.py et renvoient une table propre,
+une ligne par commune (ou par gare, par liaison...), enregistrée dans data/clean/.
+"""
 
 import pandas as pd
 from src.config import CLEAN_DATA_DIR
 from src.collecte import get_frequentation
 from src.collecte import get_gares
 
+
+# ---------- 01_donnees : Exploration des contours (cartiflette) ----------
 
 # cette fonction permet de renommer nos 5 colonnes pour standardiser nos variables entre les bases de données pour les jointures
 def clean_contours(communes):
@@ -24,6 +30,8 @@ def clean_contours(communes):
     assert (propre["code_commune"].str.len() == 5).all()
     return propre.reset_index(drop=True) #on renvoie notre base de données, chaque observation est numérotée de 0 à 34 745 
 
+
+# ---------- 01_donnees : Population des communes (INSEE) ----------
 
 def _selection(brut, nom, config):
     """Garder le champ géographique demandé et vérifier les valeurs de base."""
@@ -119,6 +127,8 @@ def clean_population(brut, config):
     return propre
 
 
+# ---------- 01_donnees : Modes de déplacement domicile–travail (INSEE) ----------
+
 def clean_navettes(brut, config):
     """Préparer les effectifs d'actifs et leurs modes de déplacement.
 
@@ -171,6 +181,8 @@ def clean_navettes(brut, config):
     print(f"Navettes propres : {len(propre):,} communes métropolitaines ; zéro publié conservé, absence conservée.")
     return propre
 
+
+# ---------- 01_donnees : Exploration des jeu de données SNCF ----------
 
 # la fonction clean_gares renvoie et enregistre un dataframe conservant seulement les colonnes qui nous intéresse et en harmonisant les noms et les types
 def clean_gares():
@@ -250,6 +262,9 @@ def clean_frequentation():
     return df_long
 
 
+# ---------- 01_donnees : Exploration du parc automobile (SDES) ----------
+
+# une ligne par commune : voitures des particuliers au début et à la fin de la période
 def clean_parc_auto(parc, annee_debut, annee_fin):
     # on retire les lignes avec des codes inconnus
     connus = parc[~parc["COMMUNE_CODE"].str.endswith("000")].copy()
@@ -269,6 +284,8 @@ def clean_parc_auto(parc, annee_debut, annee_fin):
     assert (propre["code_commune"].str.len() == 5).all()
     return propre
 
+
+# ---------- 01_donnees : Exploration du trafic aérien (DGAC, série PAP) ----------
 
 #création d'une table: chaque ligne correspond à une liaison et les colonnes synthètisent toutes les données sur cette liaison
 def clean_dgac(pap, annee_debut, annee_fin):
@@ -307,6 +324,8 @@ def clean_dgac(pap, annee_debut, annee_fin):
     assert liaisons["code_liaison"].is_unique
     return liaisons
 
+
+# ---------- 01_donnees : Exploration des facteurs d'émission (ADEME, Base Carbone) ----------
 
 #  on nettoie la base de données pour qu'elle ne garde que les données essentielles à l'analyse, avec une ligne = un mode
 def clean_base_carbone(bc, modes):

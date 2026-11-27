@@ -1,4 +1,8 @@
-"""Fonctions plot_ et map_ : graphiques et cartes."""
+"""Étape 3 : graphiques et cartes (notebooks 03_graphiques et 04_bonus_train_avion).
+
+Fonctions plot_ (graphiques) et map_ (cartes), dans l'ordre du plan : parties 1 à 4,
+carte de démonstration, puis bonus. Chaque image est enregistrée dans figures/.
+"""
 
 from matplotlib.lines import Line2D
 import folium
@@ -12,8 +16,8 @@ import geopandas as gpd
 from src.config import CLEAN_DATA_DIR, FIGURES_DIR
 from src.variables import build_tcam
 from src.variables import build_soldes_regionaux
-from src.variables import build_region
 from matplotlib.patches import Patch
+from src.collecte import get_regions
 
 # déclin en rouge, stable en gris, croissance en bleu (même palette pour toutes les cartes)
 COULEURS_TRAJECTOIRE = ListedColormap(["#f19d9b", "#efefef", "#84b9f3"])
@@ -38,6 +42,9 @@ COULEURS_TRAJECTOIRE_LONG = ListedColormap([
 ])
 
 
+# ---------- 03_graphiques : Graphique 1 : la croissance démographique par commune de 2017 à 2023 ----------
+
+# graphique 1 : carte de la croissance démographique par commune, en 5 classes
 def map_croissance_demographique() : 
 
     # Chargement de la table
@@ -74,12 +81,15 @@ def map_croissance_demographique() :
     return fig, ax
 
 
+# ---------- 03_graphiques : Graphique 2 : soldes naturels et migratoires par région ----------
+
+# graphique 2 : soldes naturel et migratoire par région
 def plot_soldes_regionaux():
 
     # Récupération des variables
     communes = gpd.read_parquet(CLEAN_DATA_DIR / "base_finale/base_finale_communes.parquet")
     regional = build_soldes_regionaux(communes)
-    regional = regional.merge(build_region(), on="code_region", how="left")
+    regional = regional.merge(get_regions(), on="code_region", how="left")
     regional["evolution_population"] = (regional["pop_2023"] - regional["pop_2017"])
     regional = regional.sort_values(by="evolution_population", ascending=False)
     
@@ -126,6 +136,9 @@ def plot_soldes_regionaux():
     return fig, ax
 
 
+# ---------- 03_graphiques : Graphique 3 : histogramme des taux de croissance communaux ----------
+
+# graphique 3 : histogramme des taux de croissance communaux, avec une ligne à 0
 def plot_hist_croissance():
 
     # Préparation des données
@@ -171,6 +184,9 @@ def plot_hist_croissance():
     return fig, ax
 
 
+# ---------- 03_graphiques : Graphique 4 : Evolution de la fréquentation des gares par catégorie (année de référence : 2019) ----------
+
+# graphique 4 : voyageurs en base 100 en 2019, par catégorie de gare
 def plot_evolution_frequentation():
 
     # Copie et sélection des données
@@ -215,6 +231,9 @@ def plot_evolution_frequentation():
     return fig, ax
 
 
+# ---------- 03_graphiques : Graphique 5 : Courbe de Lorenz des voyageurs en 2023 ----------
+
+# graphique 5 : courbe de Lorenz des voyageurs 2023, avec le coefficient de Gini
 def plot_lorenz_frequentation():
 
     # Copie et sélection des données de 2023
@@ -261,6 +280,9 @@ def plot_lorenz_frequentation():
     return fig, ax
 
 
+# ---------- 03_graphiques : Graphique 6 : Evolution des 15 gares les plus fréquentées ----------
+
+# graphique 6 : évolution des 15 gares les plus fréquentées
 def plot_evolution_top15_gares() :
 
     # Copie et sélection des données
@@ -308,6 +330,8 @@ def plot_evolution_top15_gares() :
     return fig, ax
 
 
+# ---------- 03_graphiques : Carte 7 : les gares et la croissance de la population ----------
+
 # carte des gares (taille = voyageurs) sur la trajectoire démographique des communes
 def map_gares(communes, gares, gares_annees, annee, titre, chemin):
     # une bulle par gare : sa position et ses voyageurs de l'année
@@ -332,6 +356,8 @@ def map_gares(communes, gares, gares_annees, annee, titre, chemin):
     ax.set_title(titre, loc="left", fontweight="bold")
     fig.savefig(chemin, dpi=200, bbox_inches="tight")
 
+
+# ---------- 03_graphiques : Graphique 8 : croissance de la population et des voyageurs, en 4 quadrants ----------
 
 # nuage : croissance de la population × croissance des voyageurs, en 4 quadrants (communes avec gare)
 def plot_quadrants(communes, titre, chemin):
@@ -360,6 +386,8 @@ def plot_quadrants(communes, titre, chemin):
     fig.savefig(chemin, dpi=200, bbox_inches="tight")
 
 
+# ---------- 03_graphiques : Carte 9 : les 4 profils de communes ----------
+
 # carte des 4 profils de communes : croissance ou non, gare à 10 km ou moins (desservie) ou non
 def map_profils(communes, titre, chemin):
     carte = communes[["profil", "geometry"]].to_crs(2154)
@@ -375,6 +403,8 @@ def map_profils(communes, titre, chemin):
              fontsize=8, color="#666666", va="top")
     fig.savefig(chemin, dpi=200, bbox_inches="tight")
 
+
+# ---------- 03_graphiques : Graphique 10 : croissance des voyageurs selon la trajectoire de la population ----------
 
 # boîtes à moustaches : croissance des voyageurs selon la trajectoire de la population (communes avec gare)
 def plot_voyageurs_trajectoire(communes, titre, chemin):
@@ -392,6 +422,8 @@ def plot_voyageurs_trajectoire(communes, titre, chemin):
     ax.set_title(titre, loc="left", fontweight="bold")
     fig.savefig(chemin, dpi=200, bbox_inches="tight")
 
+
+# ---------- 03_graphiques : Graphique 11 : part de la voiture selon la taille de la commune ----------
 
 # boîtes à moustaches : part des actifs allant travailler en voiture, par classe de taille de commune
 def plot_voiture_taille(communes, titre, chemin):
@@ -414,6 +446,8 @@ def plot_voiture_taille(communes, titre, chemin):
     fig.savefig(chemin, dpi=200, bbox_inches="tight")
 
 
+# ---------- 03_graphiques : Graphique 12 : part de la voiture selon la distance à la gare ----------
+
 # nuage de points : part de la voiture selon la distance à la gare, avec la médiane par tranche de 2 km
 def plot_voiture_distance(communes, titre, chemin):
     donnees = communes.dropna(subset=["dist_gare_km", "part_voiture_2023"])
@@ -431,6 +465,8 @@ def plot_voiture_distance(communes, titre, chemin):
     fig.savefig(chemin, dpi=200, bbox_inches="tight")
 
 
+# ---------- 03_graphiques : Carte 13 : distance à la gare la plus proche ----------
+
 # carte de la distance du centre de chaque commune à la gare la plus proche, en 4 classes
 def map_distance_gare(communes, titre, chemin):
     carte = communes[["dist_gare_km", "geometry"]].to_crs(2154)
@@ -446,6 +482,8 @@ def map_distance_gare(communes, titre, chemin):
     fig.savefig(chemin, dpi=200, bbox_inches="tight")
 
 
+# ---------- 03_graphiques : Graphique 14 : corrélations entre les variables communales ----------
+
 # heatmap triangulaire des corrélations de Spearman entre les 6 variables de NOMS_VARIABLES (partie basse)
 def plot_correlations(communes, titre, chemin):
     correlations = communes[list(NOMS_VARIABLES)].corr(method="spearman").rename(index=NOMS_VARIABLES, columns=NOMS_VARIABLES)
@@ -458,6 +496,8 @@ def plot_correlations(communes, titre, chemin):
     ax.set_title(titre, loc="left", fontweight="bold")
     fig.savefig(chemin, dpi=200, bbox_inches="tight")
 
+
+# ---------- 03_graphiques : Carte 15 : carte interactive des gares ----------
 
 # carte interactive des gares avec un curseur pour choisir l'année ; au clic : gare, voyageurs, croissance de la commune
 def map_gares_curseur(communes, gares, gares_annees, chemin):
@@ -484,6 +524,8 @@ def map_gares_curseur(communes, gares, gares_annees, chemin):
     carte.save(chemin)
     return carte
 
+
+# ---------- 04_bonus_train_avion : B2. Carte des liaisons aériennes intérieures ----------
 
 # carte des liaisons aériennes : un trait entre les deux villes, épaisseur = passagers
 def map_liaisons(communes, villes, liaisons, annee, titre, chemin):
@@ -515,6 +557,8 @@ def map_liaisons(communes, villes, liaisons, annee, titre, chemin):
     fig.savefig(chemin, dpi=200, bbox_inches="tight")
 
 
+# ---------- 04_bonus_train_avion : B3. L'évolution des passagers aériens selon la distance ----------
+
 # nuage : évolution des passagers aériens (mêmes mois publiés) selon la distance de la liaison
 def plot_avion_distance(liaisons, annee_debut, annee_fin, titre, chemin):
     donnees = liaisons[liaisons["mois_communs"] > 0].copy()
@@ -538,6 +582,8 @@ def plot_avion_distance(liaisons, annee_debut, annee_fin, titre, chemin):
              fontsize=8, color="#666666", va="top")
     fig.savefig(chemin, dpi=200, bbox_inches="tight")
 
+
+# ---------- 04_bonus_train_avion : B4. Le CO2 de l'avion comparé au TGV ----------
 
 # barres horizontales : CO2 de l'avion et des mêmes passagers en TGV, pour les liaisons qui émettent le plus
 def plot_co2_avion_tgv(liaisons, annee, nb, titre, chemin):
