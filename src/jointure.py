@@ -1,6 +1,16 @@
 """Fonctions join_ : associe plusieurs bases et les enregistre dans data/clean."""
+
 import pandas as pd
 from src.config import CLEAN_DATA_DIR
+
+
+def verif_code_uic(bases):
+    for df in bases :
+        print(df)
+        multiples = df[df['code_uic'].astype(str).str.contains(r"[;, ]")]
+        print(len(multiples))
+        
+    return
 
 
 # la fonction join_sncf_audit associe les jeux de données frequentation-gares et gares-et-voyageurs en conservant toutes les gares mais n'enregistre pas la base obtenue
@@ -24,6 +34,7 @@ def join_sncf_audit() :
     # 4. Pas d'harmonisation des types en raison des NaN qui empêchent de passer au type integer ou float
     
     return df_audit
+
 
 # la fonction join_sncf associe les jeux de données frequentation-gares et gares-et-voyageurs en conservant uniquement les gares dont le code_uic est présent dans les deux bases
 def join_sncf_inner() :

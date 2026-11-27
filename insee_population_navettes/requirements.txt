@@ -1,6 +1,0 @@
-# Dépendances utilisées par les notebooks INSEE. Python 3.13.
-ipykernel==7.4.0
-pandas==2.3.3
-pyarrow==26.0.0
-PyYAML==6.0.3
-requests==2.34.2
