@@ -1,4 +1,9 @@
-"""Fonctions get_ : téléchargent les données brutes dans data/raw/."""
+"""Étape 1 : collecte (notebook 01_donnees).
+
+Fonctions get_ : téléchargent chaque source une seule fois dans data/raw/, puis la relisent.
+Elles renvoient les données brutes, nettoyées ensuite par nettoyage.py.
+Les régions (get_regions) servent au graphique 2 (notebook 03_graphiques).
+"""
 
 import os #  module de manipulation des fichiers et des données
 import zipfile  #  permet d'ouvrir et lire des fichiers zip
@@ -12,6 +17,8 @@ import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
 
+
+# ---------- 01_donnees : 1.1 Contours des communes (cartiflette) ----------
 
 #  get_contours permet de télécharger la carte de la France avec ses contours et la répartition en commune
 def get_contours(niveau, annee):
@@ -30,6 +37,8 @@ def get_contours(niveau, annee):
     contours.to_parquet(chemin) #  enregistre les contours dans un fichier parquet à l'adresse chemin pour ne pas avoir à les retélécharger. 
     return contours
 
+
+# ---------- 01_donnees : 1.2 Population des communes (INSEE) ----------
 
 def _get_base(nom, config):
     """Ouvrir une archive INSEE en la téléchargeant seulement si nécessaire."""
@@ -92,10 +101,14 @@ def get_population(config):
     return _get_base("population", config)
 
 
+# ---------- 01_donnees : 1.3 Modes de déplacement domicile–travail (INSEE) ----------
+
 def get_navettes(config):
     """Lire les navettes INSEE en exploitation principale."""
     return _get_base("navettes", config)
 
+
+# ---------- 01_donnees : 1.4 Gares et fréquentation (SNCF) ----------
 
 # get_gares permet de télécharger le jeu de données sur les gares
 def get_gares():
@@ -124,6 +137,8 @@ def get_frequentation():
     return df
 
 
+# ---------- 01_donnees : 1.5 Parc automobile (SDES) ----------
+
 #téléchargement et stockage unique de la base de données, et notamment des variables qui nous intéressent
 def get_parc_auto(url, annee_debut, annee_fin):
     chemin = f"data/raw/parc_auto_{annee_debut}_{annee_fin}.csv"
@@ -140,6 +155,8 @@ def get_parc_auto(url, annee_debut, annee_fin):
             fichier.write(reponse.content)
     return pd.read_csv(chemin, sep=";", dtype={"COMMUNE_CODE": str})
 
+
+# ---------- 01_donnees : 1.6 Trafic aérien (DGAC, série PAP), bonus ----------
 
 #  récupérer le dossier raw des données dgac
 def get_dgac(url, annees):
@@ -161,6 +178,8 @@ def get_dgac(url, annees):
     return pd.concat(tables, ignore_index=True) # assemble les années en un seul tableau
 
 
+# ---------- 01_donnees : 1.7 Facteurs d'émission (ADEME, Base Carbone), bonus ----------
+
 #get_base_carbone permet de récupérer la base de données sur les émissions carbone une seule fois puis stockée. 
 def get_base_carbone(url, identifiants):
     chemin = "data/raw/base_carbone.json"
@@ -179,3 +198,16 @@ def get_base_carbone(url, identifiants):
     with open(chemin, encoding="utf-8") as fichier:
         resultats = json.load(fichier)["results"]
     return pd.DataFrame(resultats)
+
+
+# ---------- 03_graphiques : Graphique 2 : soldes naturels et migratoires par région ----------
+
+def get_regions():
+    """Récupère les régions et leurs codes."""
+
+    regions = carti_download(values="France", borders="REGION",
+    filter_by="FRANCE_ENTIERE_DROM_RAPPROCHES",year=2025, simplification=50)
+
+    regions = regions.rename(columns={"LIBELLE_REGION": "nom_region", "INSEE_REG": "code_region"})
+
+    return regions
