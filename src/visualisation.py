@@ -4,6 +4,9 @@ Fonctions plot_ (graphiques) et map_ (cartes), dans l'ordre du plan : parties 1 
 carte de démonstration, puis bonus. Chaque image est enregistrée dans figures/.
 """
 
+from io import BytesIO
+from IPython.display import Image, display
+from PIL import Image as ImagePIL
 from matplotlib.lines import Line2D
 import folium
 import matplotlib.pyplot as plt
@@ -604,3 +607,14 @@ def plot_co2_avion_tgv(liaisons, annee, nb, titre, chemin):
              "TGV). Passagers publiés (minimum, secret statistique). Sources : DGAC ; ADEME, Base Carbone. Liaisons hors Corse.",
              fontsize=8, color="#666666", va="top")
     fig.savefig(chemin, dpi=200, bbox_inches="tight")
+
+
+# ---------- main : graphiques affichés dans la synthèse ----------
+
+# affiche une image de figures/, réduite pour que le notebook reste léger (GitHub n'affiche pas les images en Markdown)
+def plot_figure(nom, largeur=700):
+    image = ImagePIL.open(f"figures/{nom}")
+    image.thumbnail((2 * largeur, 2 * largeur))
+    tampon = BytesIO()
+    image.convert("RGB").save(tampon, format="jpeg", quality=85)
+    display(Image(data=tampon.getvalue(), format="jpeg", width=largeur))
