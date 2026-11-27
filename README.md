@@ -41,7 +41,7 @@ src/nettoyage.py     clean_  : nettoyage de chaque base
 src/jointure.py      join_, build_ : bases SNCF, gares rattachées aux communes, table des communes
 src/variables.py     build_  : variables construites (croissance, parts, profils, CO2)
 src/visualisation.py plot_, map_ : graphiques et cartes
-src/analyse_mobilites.py       statistiques et ACP
+src/analyse.py       statistiques, indices et ACP
 ```
 
 Dans chaque fichier, les fonctions sont rangées dans l'ordre où les notebooks les utilisent.
