@@ -4,3 +4,7 @@ __pycache__/
 
 # téléchargement INSEE interrompu (fichier temporaire de src/collecte.py)
 data/raw/*.part
+
+# données brutes : retéléchargées par les fonctions get_ (notebook 01_donnees)
+data/raw/*
+!data/raw/*.provenance.json
