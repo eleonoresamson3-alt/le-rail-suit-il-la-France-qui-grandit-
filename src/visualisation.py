@@ -2,27 +2,31 @@
 
 import folium
 import matplotlib.pyplot as plt
-from matplotlib.colors import ListedColormap
-from folium.plugins import TimestampedGeoJson
 import numpy as np
-import seaborn as sns
 import pandas as pd
+import seaborn as sns
+from folium.plugins import TimestampedGeoJson
+from matplotlib.colors import ListedColormap
+from matplotlib.patches import Patch
 
 # déclin en rouge, stable en gris, croissance en bleu (même palette pour toutes les cartes)
 COULEURS_TRAJECTOIRE = ListedColormap(["#f19d9b", "#efefef", "#84b9f3"])
 # distance à la gare : du plus clair (proche) au plus foncé (loin), en orangé puis rouge
 COULEURS_DISTANCE = ListedColormap(["#fde0c5", "#f6a15c", "#e4572e", "#a8201a"])
-# noms lisibles des variables communales, pour les graphiques
+# les 6 variables de la heatmap, dans l'ordre du plan, avec leur nom lisible
 NOMS_VARIABLES = {"tcam_pop_2017_2023": "Croissance population", "tcam_voyageurs_2017_2023": "Croissance voyageurs",
-                  "part_voiture_2023": "Part voiture", "voitures_1000_hab_2023": "Voitures / 1 000 hab.",
-                  "dist_gare_km": "Distance à la gare", "densite": "Densité"}
+                  "densite": "Densité", "part_voiture_2023": "Part voiture",
+                  "dist_gare_km": "Distance à la gare", "voyageurs_hab_2023": "Voyageurs par habitant"}
 # ordre et couleurs des trajectoires, pour les graphiques (mêmes couleurs que sur les cartes)
 ORDRE_TRAJECTOIRE = ["déclin", "stable", "croissance"]
 COULEURS_TRAJECTOIRE_LISTE = ["#f19d9b", "#efefef", "#84b9f3"]
+# 4 profils : l'orangé signale les communes qui grandissent sans gare proche (le cas qui nous intéresse)
+COULEURS_PROFIL = {"croissance – desservie": "#84b9f3", "croissance – non desservie": "#f47230",
+                   "déclin ou stable – desservie": "#d9d9d9", "déclin ou stable – non desservie": "#a6a6a6"}
 
 
+# carte des gares (taille = voyageurs) sur la trajectoire démographique des communes
 def map_gares(communes, gares, gares_annees, annee, titre, chemin):
-    """Carte des gares (taille = voyageurs) sur la trajectoire démographique des communes."""
     # une bulle par gare : sa position et ses voyageurs de l'année
     bulles = gares.merge(gares_annees[gares_annees["annee"] == annee], on="code_uic")
     fig, ax = plt.subplots(figsize=(9, 9))
@@ -45,17 +49,20 @@ def map_gares(communes, gares, gares_annees, annee, titre, chemin):
     ax.set_title(titre, loc="left", fontweight="bold")
     fig.savefig(chemin, dpi=200, bbox_inches="tight")
 
-# carte interactive des gares avec un curseur pour choisir l'année
-def map_gares_curseur(gares, gares_annees, chemin):
-    # une ligne par gare et par année, avec la position de la gare en latitude-longitude
+
+# carte interactive des gares avec un curseur pour choisir l'année ; au clic : gare, voyageurs, croissance de la commune
+def map_gares_curseur(communes, gares, gares_annees, chemin):
+    # une ligne par gare et par année, avec la position de la gare et la croissance de sa commune
     points = gares[["code_uic", "geometry"]].merge(gares_annees, on="code_uic").to_crs(4326)
+    points = points.merge(communes[["code_commune", "tcam_pop_2017_2023"]], on="code_commune", how="left")
     # un point par gare et par année, au format attendu par le curseur de folium
     elements = [{
         "type": "Feature",
         "geometry": {"type": "Point", "coordinates": [p.geometry.x, p.geometry.y]},
         "properties": {
             "time": f"{p['annee']}-01-01",
-            "popup": f"{p['nom_gare']} : {p['voyageurs']:,.0f} voyageurs en {p['annee']}".replace(",", " "),
+            "popup": (f"<b>{p['nom_gare']}</b><br>{p['voyageurs']:,.0f} voyageurs en {p['annee']}<br>"
+                      f"Population de la commune : {p['tcam_pop_2017_2023']:+.1f} % par an (2017-2023)").replace(",", " "),
             "icon": "circle",
             "iconstyle": {"radius": max((p["voyageurs"] / 1e6) ** 0.5 * 2, 2), "color": "#191919",
                           "weight": 0.5, "fillColor": "#191919", "fillOpacity": 0.6},
@@ -67,7 +74,9 @@ def map_gares_curseur(gares, gares_annees, chemin):
                        auto_play=False, add_last_point=False, date_options="YYYY").add_to(carte)
     carte.save(chemin)
     return carte
-#heatmap triangulaire matrice de corrélation (que partie basse)
+
+
+# heatmap triangulaire des corrélations de Spearman entre les 6 variables de NOMS_VARIABLES (partie basse)
 def plot_correlations(communes, titre, chemin):
     correlations = communes[list(NOMS_VARIABLES)].corr(method="spearman").rename(index=NOMS_VARIABLES, columns=NOMS_VARIABLES)
     # on retire la 1re ligne et la dernière colonne, vides, puis on masque la moitié haute qui répète la basse
@@ -79,7 +88,8 @@ def plot_correlations(communes, titre, chemin):
     ax.set_title(titre, loc="left", fontweight="bold")
     fig.savefig(chemin, dpi=200, bbox_inches="tight")
 
-#carte de la distance du centre de chaque commune à la gare la plus proche, 4 classes
+
+# carte de la distance du centre de chaque commune à la gare la plus proche, en 4 classes
 def map_distance_gare(communes, titre, chemin):
     carte = communes[["dist_gare_km", "geometry"]].to_crs(2154)
     carte["classe"] = pd.cut(carte["dist_gare_km"], bins=[0, 5, 10, 15, float("inf")],
@@ -93,23 +103,25 @@ def map_distance_gare(communes, titre, chemin):
     ax.set_title(titre, loc="left", fontweight="bold")
     fig.savefig(chemin, dpi=200, bbox_inches="tight")
 
-# boîtes à moustaches: croissance des voyageurs selon la trajectoire de la population
+
+# boîtes à moustaches : croissance des voyageurs selon la trajectoire de la population (communes avec gare)
 def plot_voyageurs_trajectoire(communes, titre, chemin):
     donnees = communes.dropna(subset=["tcam_voyageurs_2017_2023", "trajectoire"])
     fig, ax = plt.subplots(figsize=(8, 5))
-    # showfliers=False : on masque les valeurs extrêmes
+    # showfliers=False : on masque les valeurs extrêmes (gares ouvertes en cours de période)
     sns.boxplot(data=donnees, x="trajectoire", y="tcam_voyageurs_2017_2023", order=ORDRE_TRAJECTOIRE,
                 hue="trajectoire", palette=COULEURS_TRAJECTOIRE_LISTE, showfliers=False, legend=False, width=0.5, ax=ax)
     # nombre de communes sous chaque boîte
     effectifs = donnees["trajectoire"].value_counts()
-    ax.set_xticks(range(3), [f"{t}\n({effectifs[t]} communes)" for t in ORDRE_TRAJECTOIRE])
+    ax.set_xticks(range(3), [f"{t}\nn = {effectifs[t]:,}".replace(",", " ") for t in ORDRE_TRAJECTOIRE])
     ax.axhline(0, color="#666666", linewidth=0.8)
     ax.set_xlabel("Trajectoire de la population, 2017-2023")
     ax.set_ylabel("Croissance des voyageurs (% par an)")
     ax.set_title(titre, loc="left", fontweight="bold")
     fig.savefig(chemin, dpi=200, bbox_inches="tight")
 
-# Nuage de points: part de la voiture selon la distance à la gare
+
+# nuage de points : part de la voiture selon la distance à la gare, avec la médiane par tranche de 2 km
 def plot_voiture_distance(communes, titre, chemin):
     donnees = communes.dropna(subset=["dist_gare_km", "part_voiture_2023"])
     # médiane de la part de la voiture par tranche de 2 km (milieu de la tranche en abscisse)
@@ -123,4 +135,41 @@ def plot_voiture_distance(communes, titre, chemin):
     ax.set_ylabel("Actifs allant travailler en voiture (%)")
     ax.legend(frameon=False, loc="lower right")
     ax.set_title(titre, loc="left", fontweight="bold")
+    fig.savefig(chemin, dpi=200, bbox_inches="tight")
+
+
+# boîtes à moustaches : part des actifs allant travailler en voiture, par classe de taille de commune
+def plot_voiture_taille(communes, titre, chemin):
+    donnees = communes.dropna(subset=["part_voiture_toutes_2023", "classe_taille"])
+    fig, ax = plt.subplots(figsize=(10, 5))
+    # showfliers=False : valeurs extrêmes masquées (très petites communes)
+    sns.boxplot(data=donnees, x="classe_taille", y="part_voiture_toutes_2023", color="#e4572e",
+                showfliers=False, width=0.5, ax=ax)
+    # nombre de communes sous chaque boîte
+    effectifs = donnees["classe_taille"].value_counts(sort=False)
+    ax.set_xticks(range(len(effectifs)), [f"{classe}\nn = {n:,}".replace(",", " ") for classe, n in effectifs.items()])
+    ax.set_ylim(0, 102)
+    ax.set_xlabel("Taille de la commune (habitants en 2023)")
+    ax.set_ylabel("Actifs allant travailler en voiture (%)")
+    ax.set_title(titre, loc="left", fontweight="bold")
+    # note sous le graphique : valeurs extrêmes signalées, champ et source
+    fig.text(0, -0.04, "Valeurs extrêmes non affichées. Toutes les communes, sans seuil d'actifs.\n"
+             "Source : INSEE, navettes domicile-travail 2023. Champ : France métropolitaine.",
+             fontsize=8, color="#666666", va="top")
+    fig.savefig(chemin, dpi=200, bbox_inches="tight")
+
+
+# carte des 4 profils de communes : croissance ou non, gare à 10 km ou moins (desservie) ou non
+def map_profils(communes, titre, chemin):
+    carte = communes[["profil", "geometry"]].to_crs(2154)
+    fig, ax = plt.subplots(figsize=(9, 9))
+    # chaque commune prend la couleur de son profil ; sans profil (Corse, communes sans taux) en blanc
+    carte.plot(ax=ax, color=carte["profil"].map(COULEURS_PROFIL).fillna("white"), linewidth=0)
+    cases = [Patch(facecolor=couleur, label=profil) for profil, couleur in COULEURS_PROFIL.items()]
+    ax.legend(handles=cases, title="Profil de la commune", loc="lower left", frameon=False, alignment="left")
+    ax.set_axis_off()
+    ax.set_title(titre, loc="left", fontweight="bold")
+    fig.text(0.02, 0.06, "Croissance : population en hausse entre 2017 et 2023. Desservie : gare de voyageurs à 10 km ou moins.\n"
+             "Sources : INSEE, recensements 2017 et 2023 ; SNCF. Champ : France métropolitaine hors Corse.",
+             fontsize=8, color="#666666", va="top")
     fig.savefig(chemin, dpi=200, bbox_inches="tight")
