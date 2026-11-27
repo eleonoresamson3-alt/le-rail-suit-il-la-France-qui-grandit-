@@ -234,7 +234,7 @@ def plot_evolution_frequentation():
 
 def plot_lorenz_frequentation():
 
-    # Sélection de la fréquentation en 2023
+    # Copie et sélection des données de 2023
     gares_annees = pd.read_parquet(CLEAN_DATA_DIR / "base_finale/gares_annees.parquet")
     gares_annees = gares_annees.copy()
     gares_annees = gares_annees[gares_annees["annee"] == 2023].copy()
@@ -274,5 +274,52 @@ def plot_lorenz_frequentation():
     plt.show()
 
     fig.savefig(FIGURES_DIR / "05_courbe_Lorenz_voyageurs.png", dpi=300, bbox_inches="tight")
+
+    return fig, ax
+
+
+def plot_evolution_top15_gares() :
+
+    # Copie et sélection des données
+    gares_annees = pd.read_parquet(CLEAN_DATA_DIR / "base_finale/gares_annees.parquet")
+    gares_annees = gares_annees.copy()
+
+    # Passage au format large (une colonne par année)
+    evolution = (gares_annees.pivot(index=["code_uic", "nom_gare"], columns="annee",
+                 values="voyageurs").reset_index())
+
+    # Sélection des 15 gares les plus fréquentées en 2023
+    top15 = (evolution.sort_values(2023, ascending=False).head(15)
+             .sort_values(2023, ascending=True))
+
+    # Création du graphique
+    fig, ax = plt.subplots(figsize=(11, 8))
+
+    positions = range(len(top15))
+
+    # Lignes reliant les deux années
+    for position, (_, gare) in zip(positions, top15.iterrows()) :
+        ax.plot([gare[2017], gare[2023]], [position, position], color="grey", alpha=0.6,
+                 linewidth=2)
+
+    # Points correspondant aux deux années
+    ax.scatter(top15[2017], positions, label="2017", s=60)
+    ax.scatter(top15[2023], positions, label="2023", s=60)
+
+    # Noms des gares
+    ax.set_yticks(list(positions))
+    ax.set_yticklabels(top15["nom_gare"])
+
+    ax.set_title("Les 15 gares les plus fréquentées en 2023 : évolution depuis 2017")
+    ax.set_xlabel("Nombre de voyageurs")
+    ax.set_ylabel("Gare")
+
+    ax.legend(title="Année")
+    ax.grid(axis="x", alpha=0.3)
+
+    plt.tight_layout()
+    plt.show()
+
+    fig.savefig(FIGURES_DIR / "06_evolution_gares_plus_frequentees.png", dpi=300, bbox_inches="tight")
 
     return fig, ax
