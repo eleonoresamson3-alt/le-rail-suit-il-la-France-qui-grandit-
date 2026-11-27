@@ -138,3 +138,327 @@ def plot_soldes_regionaux():
 
 
     return fig, ax
+
+import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
+import pandas as pd
+import geopandas as gpd
+import numpy as np
+
+from pathlib import Path
+
+from src.config import CLEAN_DATA_DIR, FIGURES_DIR
+from src.variables import build_tcam
+from src.variables import build_solde_naturel
+from src.variables import build_solde_migratoire
+from src.variables import build_soldes_regionaux
+from src.variables import build_region
+
+
+# déclin en rouge, stable en gris, croissance en bleu (même palette pour toutes les cartes)
+COULEURS_TRAJECTOIRE = ListedColormap(["#f19d9b", "#efefef", "#84b9f3"])
+
+COULEURS_TRAJECTOIRE_LONG = ListedColormap([
+    "#f19d9b",  # Déclin fort : rouge clair
+    "#f6c5c3",  # Déclin modéré : rouge très clair
+    "#efefef",  # Stabilité : gris
+    "#b3d3f5",  # Croissance modérée : bleu clair
+    "#84b9f3"   # Croissance forte : bleu
+])
+
+# carte des gares sur la trajectoire démographique des communes
+def map_gares(communes, gares, gares_annees, annee, titre, chemin):
+    # on set up les bulles pour les gares, à partir du code_iuc
+    bulles = gares.merge(gares_annees[gares_annees["annee"] == annee], on="code_uic")
+    fig, ax = plt.subplots(figsize=(9, 9))
+
+    # fond : communes coloriées selon leur trajectoire, en Lambert 93
+    communes.to_crs(2154).plot(ax=ax, column="trajectoire", cmap=COULEURS_TRAJECTOIRE, linewidth=0, legend=True,
+                               legend_kwds={"loc": "lower left", "title": "Population 2017-2023"})
+
+    # bulles : surface proportionnelle aux voyageurs, avec une taille minimale pour les petites gares
+    bulles.to_crs(2154).plot(ax=ax, markersize=(bulles["voyageurs"] / 1e6 * 4).clip(lower=2),
+                             color="#191919", edgecolor="white", linewidth=0.3, alpha=0.7)
+
+    # seconde légende pour la taille des bulles, sans effacer celle des communes
+    ax.add_artist(ax.get_legend())
+    exemples = [ax.scatter([], [], s=millions * 4, color="#191919", alpha=0.7, label=f"{millions} millions")
+                for millions in [10, 50, 200]]
+    ax.legend(handles=exemples, title=f"Voyageurs {annee}", loc="upper left", labelspacing=1.5, frameon=False)
+
+    ax.set_axis_off()
+    ax.set_title(titre, loc="left", fontweight="bold")
+    fig.savefig(chemin, dpi=200, bbox_inches="tight")
+
+
+def map_croissance_demographique() : 
+
+    # Chargement de la table
+    communes = gpd.read_parquet(CLEAN_DATA_DIR / "base_finale/communes.parquet")
+    communes = communes.copy()
+
+    # Ajout du tcam à partir de la fonction build_tcam()
+    communes["tcam_pop_2017_2023"] = build_tcam(communes["pop_2017"], communes["pop_2023"], 6)
+
+
+    # Création de la figure
+    fig, ax = plt.subplots(figsize=(12, 10))
+
+    # Tracé de la carte
+    communes.plot(column="tcam_pop_2017_2023", cmap= COULEURS_TRAJECTOIRE_LONG, scheme="quantiles",
+                  k=5, legend=True, edgecolor="white", linewidth=0.05,
+                  ax=ax,legend_kwds={"title": "Croissance annuelle moyenne (%)","loc": "lower left"})
+
+    # Titre
+    ax.set_title("Une population en croissance autour des grandes villes", fontsize=14, pad=15)
+
+    # Suppression des axes
+    ax.set_axis_off()
+
+    # Source
+    #fig.text(1, 0.05, "Source : INSEE, Recensements de la population 2017 et 2023.")
+    "a repositionner, pour l'instant rend la légende illisible"
+
+    plt.tight_layout()
+
+    # Enregistrer
+    fig.savefig(FIGURES_DIR / "01_croissance_demographique.png", dpi=300, bbox_inches="tight")
+
+    return fig, ax
+
+
+def plot_soldes_regionaux():
+
+    # Récupération des variables
+    communes = gpd.read_parquet(CLEAN_DATA_DIR / "base_finale/communes.parquet")
+    regional = build_soldes_regionaux(communes)
+    regional = regional.merge(build_region(), on="code_region", how="left")
+    regional["evolution_population"] = (regional["pop_2023"] - regional["pop_2017"])
+    regional = regional.sort_values(by="evolution_population", ascending=False)
+    
+    # Position des régions sur l'axe vertical
+    positions = np.arange(len(regional))
+
+    # Dimensions de la figure
+    fig, ax = plt.subplots(figsize=(12, 8))
+
+    # Barres horizontales
+    hauteur = 0.35
+
+    ax.barh(positions - hauteur/2,regional["solde_naturel"],height=hauteur,label="Solde naturel")
+
+    ax.barh(positions + hauteur/2,regional["solde_migratoire"],height=hauteur,label="Solde migratoire apparent")
+
+    # Noms des régions
+    ax.set_yticks(positions)
+    ax.set_yticklabels(regional["nom_region"])
+
+    # Ordre des régions : croissance décroissante
+    ax.invert_yaxis()
+
+    # Ligne verticale à zéro
+    ax.axvline(0, color="black", linewidth=0.8)
+
+    # Titres et axes
+    ax.set_title("Les soldes naturel et migratoire expliquent les dynamiques régionales",fontsize=14)
+
+    ax.set_xlabel("Nombre d'habitants")
+    ax.set_ylabel("Région")
+
+    ax.legend()
+
+    # Source
+    fig.text(0.1, 0.02,"Source : INSEE, Recensements de la population 2017 et 2023.")
+
+    plt.tight_layout()
+
+    # Enregistrer
+    fig.savefig(FIGURES_DIR / "02_soldes_regionaux.png", dpi=300, bbox_inches="tight")
+
+
+    return fig, ax
+
+
+
+def plot_hist_croissance():
+
+    # Préparation des données
+    communes = gpd.read_parquet(CLEAN_DATA_DIR / "base_finale/communes.parquet")
+    communes["tcam_pop_2017_2023"] = build_tcam(communes["pop_2017"], communes["pop_2023"], 6)
+    croissance = communes["tcam_pop_2017_2023"].dropna()
+
+    # Calcul du nombre de communes en croissance
+    nb_croissance = (croissance > 0).sum()
+
+    nb_total = len(croissance)
+
+    part_croissance = nb_croissance / nb_total * 100
+
+    # Création de la figure
+    fig, ax = plt.subplots(figsize=(11, 6))
+
+    # Histogramme
+    ax.hist(croissance, bins=40, edgecolor="white", alpha=0.8)
+
+    # Ligne verticale à zéro
+    ax.axvline(0, color="red", linestyle="--", linewidth=1.5, label="Absence de croissance")
+
+    # Titre
+    ax.set_title(
+        f"{part_croissance:.1f} % des communes connaissent une croissance démographique",
+        fontsize=14)
+
+    # Axes
+    ax.set_xlabel("Taux de croissance annuel moyen (%)")
+    ax.set_ylabel("Nombre de communes")
+
+    ax.legend()
+
+    # Source
+    #fig.text(0.1, 0.02,"Source : INSEE, Recensements de la population 2017 et 2023.")
+
+    plt.tight_layout()
+
+     # Enregistrer
+    fig.savefig(FIGURES_DIR / "03_histogramme_croissance.png", dpi=300, bbox_inches="tight")
+
+    return fig, ax
+
+
+
+def plot_evolution_frequentation():
+
+    # Copie et sélection des données
+    gares_annees = pd.read_parquet(CLEAN_DATA_DIR / "base_finale/gares_annees.parquet")
+    gares_annees = gares_annees.copy()
+
+    gares_annees = gares_annees[gares_annees["segmentation_drg"].notna()]
+
+    # Agrégation des voyageurs par année et segmentation
+    evolution = (gares_annees.groupby(["annee", "segmentation_drg"])["voyageurs"].sum().unstack())
+
+    # Passage en base 100 en 2019
+    evolution = evolution.div(evolution.loc[2019]) * 100
+
+    # Création du graphique
+    fig, ax = plt.subplots(figsize=(11, 6))
+
+    for categorie in ["A", "B", "C"]:
+        if categorie in evolution.columns:
+            ax.plot(evolution.index, evolution[categorie], marker="o", linewidth=2, 
+                    label=f"Catégorie {categorie}")
+
+    # Repère Covid
+    ax.axvline(x=2020, color="grey", linestyle="--", alpha=0.8, label="Covid-19")
+
+    # Mise en forme
+    ax.axhline(100, color="black", linewidth=0.8, alpha=0.5)
+
+    ax.set_title("Évolution de la fréquentation des gares par segmentation DRG")
+    ax.set_xlabel("Année")
+    ax.set_ylabel("Indice de fréquentation (base 100 en 2019)")
+
+    ax.set_xticks(range(2017, 2024))
+    ax.legend(title="Segmentation")
+    ax.grid(axis="y", alpha=0.3)
+
+    plt.tight_layout()
+    plt.show()
+
+    fig.savefig(FIGURES_DIR / "04_voyageurs_base_100.png", dpi=300, bbox_inches="tight")
+
+    return fig, ax
+
+
+
+def plot_lorenz_frequentation():
+
+    # Copie et sélection des données de 2023
+    gares_annees = pd.read_parquet(CLEAN_DATA_DIR / "base_finale/gares_annees.parquet")
+    gares_annees = gares_annees.copy()
+    gares_annees = gares_annees[gares_annees["annee"] == 2023].copy()
+
+    # Classement des gares de la moins à la plus fréquentée
+    voyageurs = np.sort(gares_annees["voyageurs"].to_numpy())
+
+    # Calcul des parts cumulées
+    part_gares = np.arange(1, len(voyageurs) + 1) / len(voyageurs)
+    part_voyageurs = np.cumsum(voyageurs) / voyageurs.sum()
+
+    # Ajout du point d'origine
+    x = np.insert(part_gares, 0, 0)
+    y = np.insert(part_voyageurs, 0, 0)
+
+    # Calcul du coefficient de Gini
+    gini = 1 - 2 * np.trapezoid(y, x)
+
+    # Création du graphique
+    fig, ax = plt.subplots(figsize=(8, 8))
+
+    ax.plot(x * 100, y * 100, linewidth=2, label="Courbe de Lorenz")
+
+    ax.plot([0, 100], [0, 100], linestyle="--", color="grey", label="Répartition égalitaire")
+
+    ax.set_title(f"Concentration de la fréquentation des gares en 2023\n"
+                 f"Coefficient de Gini : {gini:.3f}")
+    ax.set_xlabel("Part cumulée des gares (%)")
+    ax.set_ylabel("Part cumulée des voyageurs (%)")
+
+    ax.set_xlim(0, 100)
+    ax.set_ylim(0, 100)
+    ax.legend()
+    ax.grid(alpha=0.3)
+
+    plt.tight_layout()
+    plt.show()
+
+    fig.savefig(FIGURES_DIR / "05_courbe_Lorenz_voyageurs.png", dpi=300, bbox_inches="tight")
+
+    return fig, ax
+
+
+def plot_evolution_top15_gares() :
+
+    # Copie et sélection des données
+    gares_annees = pd.read_parquet(CLEAN_DATA_DIR / "base_finale/gares_annees.parquet")
+    gares_annees = gares_annees.copy()
+
+    # Passage au format large (une colonne par année)
+    evolution = (gares_annees.pivot(index=["code_uic", "nom_gare"], columns="annee",
+                 values="voyageurs").reset_index())
+
+    # Sélection des 15 gares les plus fréquentées en 2023
+    top15 = (evolution.sort_values(2023, ascending=False).head(15)
+             .sort_values(2023, ascending=True))
+
+    # Création du graphique
+    fig, ax = plt.subplots(figsize=(11, 8))
+
+    positions = range(len(top15))
+
+    # Lignes reliant les deux années
+    for position, (_, gare) in zip(positions, top15.iterrows()) :
+        ax.plot([gare[2017], gare[2023]], [position, position], color="grey", alpha=0.6,
+                 linewidth=2)
+
+    # Points correspondant aux deux années
+    ax.scatter(top15[2017], positions, label="2017", s=60)
+    ax.scatter(top15[2023], positions, label="2023", s=60)
+
+    # Noms des gares
+    ax.set_yticks(list(positions))
+    ax.set_yticklabels(top15["nom_gare"])
+
+    ax.set_title("Les 15 gares les plus fréquentées en 2023 : évolution depuis 2017")
+    ax.set_xlabel("Nombre de voyageurs")
+    ax.set_ylabel("Gare")
+
+    ax.legend(title="Année")
+    ax.grid(axis="x", alpha=0.3)
+
+    plt.tight_layout()
+    plt.show()
+
+    fig.savefig(FIGURES_DIR / "06_evolution_gares_plus_frequentees.png", dpi=300, bbox_inches="tight")
+
+    return fig, ax
