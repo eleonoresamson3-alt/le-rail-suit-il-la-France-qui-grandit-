@@ -54,7 +54,8 @@ Puis ouvrir les notebooks avec le noyau « Python (rail) ».
 | `05_analyse_mobilites` | statistiques descriptives et ACP |
 
 Chaque notebook relit les tables enregistrées par le précédent : on peut en relancer un seul.
-Les fichiers bruts ne sont téléchargés qu'une fois, dans `data/raw/`.
+Seule la base finale (`data/clean/base_finale/`) est sur GitHub : on peut lancer directement `03_graphiques`, `04_bonus_train_avion` et `05_analyse_mobilites`.
+Pour tout refaire, `01_donnees` télécharge les données brutes une seule fois dans `data/raw/` (quelques minutes), puis `02_base_finale` recrée la base finale.
 
 ## Organisation
 
