@@ -30,21 +30,37 @@ Périmètre de l'analyse : 2017-2023, France Métropolitaine
 ## Structure du repository
 
 le-rail-suit-il-la-france-qui-grandit/
+
 │
+
 ├── data/
+
 │   ├── raw/               # Données brutes
+
 │   └── clean/             # Données nettoyées
+
 │       └── base_finale/   # Données croisées
+
 │
+
 ├── figures/               # Graphiques produits
+
 │
+
 ├── notebooks/             # Analyses exploratoires
+
 │
+
 ├── src/                   # Scripts Python$
+
 │
+
 ├── config.yaml
+
 ├── main.ipynb
+
 ├── README.md
+
 └── requirements.txt
 
 ### Les notebooks
