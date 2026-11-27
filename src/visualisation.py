@@ -6,9 +6,12 @@ from matplotlib.colors import ListedColormap
 from folium.plugins import TimestampedGeoJson
 import numpy as np
 import seaborn as sns
+import pandas as pd
 
 # déclin en rouge, stable en gris, croissance en bleu (même palette pour toutes les cartes)
 COULEURS_TRAJECTOIRE = ListedColormap(["#f19d9b", "#efefef", "#84b9f3"])
+# distance à la gare : du plus clair (proche) au plus foncé (loin), en orangé puis rouge
+COULEURS_DISTANCE = ListedColormap(["#fde0c5", "#f6a15c", "#e4572e", "#a8201a"])
 # noms lisibles des variables communales, pour les graphiques
 NOMS_VARIABLES = {"tcam_pop_2017_2023": "Croissance population", "tcam_voyageurs_2017_2023": "Croissance voyageurs",
                   "part_voiture_2023": "Part voiture", "voitures_1000_hab_2023": "Voitures / 1 000 hab.",
@@ -69,5 +72,19 @@ def plot_correlations(communes, titre, chemin):
     fig, ax = plt.subplots(figsize=(8, 6))
     sns.heatmap(bas, mask=masque, annot=True, fmt=".2f", cmap="RdBu", vmin=-1, vmax=1,
                 linewidths=2, cbar_kws={"label": "Corrélation de Spearman"}, ax=ax)
+    ax.set_title(titre, loc="left", fontweight="bold")
+    fig.savefig(chemin, dpi=200, bbox_inches="tight")
+
+#carte de la distance du centre de chaque commune à la gare la plus proche, 4 classes
+def map_distance_gare(communes, titre, chemin):
+    carte = communes[["dist_gare_km", "geometry"]].to_crs(2154)
+    carte["classe"] = pd.cut(carte["dist_gare_km"], bins=[0, 5, 10, 15, float("inf")],
+                             labels=["5 km ou moins", "5 à 10 km", "10 à 15 km", "plus de 15 km"])
+    fig, ax = plt.subplots(figsize=(9, 9))
+    # Corse sans distance (pas de gare SNCF) : en gris clair
+    carte.plot(ax=ax, column="classe", cmap=COULEURS_DISTANCE, linewidth=0, legend=True,
+               missing_kwds={"color": "#e0e0e0", "label": "pas de gare SNCF"},
+               legend_kwds={"loc": "lower left", "title": "Distance à la gare la plus proche"})
+    ax.set_axis_off()
     ax.set_title(titre, loc="left", fontweight="bold")
     fig.savefig(chemin, dpi=200, bbox_inches="tight")
