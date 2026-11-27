@@ -3,12 +3,14 @@
 import os #  module de manipulation des fichiers et des données
 import zipfile  #  permet d'ouvrir et lire des fichiers zip
 import json
-
 import pandas as pd
 import requests   #  téléchargement des fichiers ou pages depuis internet
-
 import geopandas as gpd #  module pandas mais pour cartographie et représentation visuelle
 from cartiflette import carti_download #  carti_download nous permet de récupérer les contours nécessaires à la création de nos cartes
+from src.config import RAW_DATA_DIR
+import hashlib
+from datetime import datetime, timezone
+from pathlib import Path
 
 
 #  get_contours permet de télécharger la carte de la France avec ses contours et la répartition en commune
@@ -27,6 +29,117 @@ def get_contours(niveau, annee):
     #  télécharge les contours de toute la France (DOM compris), au niveau et à l'année demandés, en coordonnées (longitude et latitude) et les range dans la variable contours.
     contours.to_parquet(chemin) #  enregistre les contours dans un fichier parquet à l'adresse chemin pour ne pas avoir à les retélécharger. 
     return contours
+
+
+def _get_base(nom, config):
+    """Ouvrir une archive INSEE en la téléchargeant seulement si nécessaire."""
+    source = config["insee"][nom]
+    chemin = Path(config["dossiers"]["brut"]) / source["fichier"]
+    chemin.parent.mkdir(parents=True, exist_ok=True)
+    trace = chemin.with_suffix(".provenance.json")
+    if not chemin.exists():
+        if config.get("hors_ligne", False):
+            raise FileNotFoundError(f"Archive INSEE manquante en mode hors ligne : {chemin}")
+        # Télécharger le fichier demandé et arrêter si le serveur signale une erreur.
+        reponse = requests.get(source["url"], timeout=180)
+        reponse.raise_for_status()
+        # Vérifier l'archive avant de conserver une réponse du serveur.
+        # Le fichier temporaire évite de prendre un téléchargement interrompu
+        # pour une archive complète.
+        temporaire = chemin.with_suffix(".part")
+        temporaire.write_bytes(reponse.content)
+        with zipfile.ZipFile(temporaire) as archive:
+            assert archive.testzip() is None, "Archive ZIP corrompue"
+        temporaire.replace(chemin)
+        provenance = {
+            "url": reponse.url,
+            "collecte_utc": datetime.now(timezone.utc).isoformat(),
+            "sha256": hashlib.sha256(reponse.content).hexdigest(),
+            "octets": len(reponse.content),
+        }
+        trace.write_text(json.dumps(provenance, ensure_ascii=False, indent=2), encoding="utf-8")
+    # Vérifier le fichier avant de le lire : l'archive peut avoir été modifiée
+    # depuis son dernier téléchargement.
+    contenu = chemin.read_bytes()
+    empreinte = hashlib.sha256(contenu).hexdigest()
+    if trace.exists():
+        provenance = json.loads(trace.read_text(encoding="utf-8"))
+        assert provenance["sha256"] == empreinte, f"Archive brute modifiée : {chemin}"
+    else:
+        # Les premiers fichiers ont été acquis pendant la vérification documentaire.
+        # On distingue leur date locale de modification d'une date HTTP inconnue.
+        provenance = {
+            "url": source["url"],
+            "date_modification_cache_utc": datetime.fromtimestamp(
+                chemin.stat().st_mtime, tz=timezone.utc).isoformat(),
+            "sha256": empreinte,
+            "octets": len(contenu),
+        }
+        trace.write_text(json.dumps(provenance, ensure_ascii=False, indent=2), encoding="utf-8")
+    # Le ZIP contient un seul CSV de données. Le lire en texte garde intacts
+    # les codes INSEE, notamment leurs zéros initiaux.
+    with zipfile.ZipFile(chemin) as archive:
+        membres = [m for m in archive.namelist() if m.endswith("_data.csv")]
+        assert len(membres) == 1, membres
+        with archive.open(membres[0]) as fichier:
+            brut = pd.read_csv(fichier, sep=";", dtype="string", encoding="utf-8-sig")
+    print(f"INSEE {nom} : {len(brut):,} lignes brutes lues ; archive et empreinte contrôlées.")
+    return brut
+
+
+def get_population(config):
+    """Lire les séries de population INSEE, depuis le cache si possible."""
+    return _get_base("population", config)
+
+
+def get_navettes(config):
+    """Lire les navettes INSEE en exploitation principale."""
+    return _get_base("navettes", config)
+
+
+# get_gares permet de télécharger le jeu de données sur les gares
+def get_gares():
+
+    chemin = RAW_DATA_DIR / "gares-de-voyageurs.parquet"  # chemin du fichier que l'on cherche
+    # déjà téléchargé : on relit le fichier au lieu de retélécharger
+    if os.path.exists(chemin):
+        return pd.read_parquet(chemin)  # si le fichier existe déjà dans data/raw on le relit et on le renvoie sans le télécharger à nouveau
+    url = 'https://ressources.data.sncf.com/api/explore/v2.1/catalog/datasets/gares-de-voyageurs/exports/csv?use_labels=true'
+    df = pd.read_csv(url, sep=';', dtype={"Code commune": str})  # ouvre le fichier comme dataframe pandas en convertissant Code commune comme str pour éviter de perdre le premier 0
+    df.to_parquet(chemin, index=False)  # enregistre le fichier au chemin à l'emplacement prévu
+    return df
+
+
+# get_frequentation permet de télécharger la base de données avec la freéquentations des gares
+def get_frequentation():
+
+    chemin = RAW_DATA_DIR / "frequentation-gares.parquet"  # chemin du fichier que l'on cherche
+    # déjà téléchargé : on relit le fichier au lieu de retélécharger
+    if os.path.exists(chemin):
+        return pd.read_parquet(chemin)  # si le fichier existe déjà dans data/raw on le relit et on le renvoie sans le télécharger à nouveau
+    url = 'https://tabular-api.data.gouv.fr/api/resources/d4cf16d5-dd91-453c-887e-6084639caac8/data/csv/'
+    df = pd.read_csv(url, sep=',')  # ouvre le fichier comme dataframe pandas
+    df = df.drop(columns=["__id"])  # supprime la première colonne
+    df.to_parquet(chemin, index=False)  # enregistre le fichier au chemin à l'emplacement prévu
+    return df
+
+
+#téléchargement et stockage unique de la base de données, et notamment des variables qui nous intéressent
+def get_parc_auto(url, annee_debut, annee_fin):
+    chemin = f"data/raw/parc_auto_{annee_debut}_{annee_fin}.csv"
+    # la base complète est très lourde : on demande à l'API seulement ce qui nous sert, on évacue les voitures de société
+    if not os.path.exists(chemin):
+        parametres = {
+            "GROUPE": "eq:VP",
+            "STATUT_UTILISATEUR": "eq:Particulier",
+            "columns": f"COMMUNE_CODE,COMMUNE_NOM,CARBURANT,CRIT_AIR,PARC_{annee_debut},PARC_{annee_fin}",
+        }
+        reponse = requests.get(url, params=parametres, timeout=300)
+        reponse.raise_for_status()
+        with open(chemin, "wb") as fichier:
+            fichier.write(reponse.content)
+    return pd.read_csv(chemin, sep=";", dtype={"COMMUNE_CODE": str})
+
 
 #  récupérer le dossier raw des données dgac
 def get_dgac(url, annees):
@@ -47,6 +160,7 @@ def get_dgac(url, annees):
             tables.append(table)
     return pd.concat(tables, ignore_index=True) # assemble les années en un seul tableau
 
+
 #get_base_carbone permet de récupérer la base de données sur les émissions carbone une seule fois puis stockée. 
 def get_base_carbone(url, identifiants):
     chemin = "data/raw/base_carbone.json"
@@ -65,49 +179,3 @@ def get_base_carbone(url, identifiants):
     with open(chemin, encoding="utf-8") as fichier:
         resultats = json.load(fichier)["results"]
     return pd.DataFrame(resultats)
-
-#téléchargement et stockage unique de la base de données, et notamment des variables qui nous intéressent
-def get_parc_auto(url, annee_debut, annee_fin):
-    chemin = f"data/raw/parc_auto_{annee_debut}_{annee_fin}.csv"
-    # la base complète est très lourde : on demande à l'API seulement ce qui nous sert, on évacue les voitures de société
-    if not os.path.exists(chemin):
-        parametres = {
-            "GROUPE": "eq:VP",
-            "STATUT_UTILISATEUR": "eq:Particulier",
-            "columns": f"COMMUNE_CODE,COMMUNE_NOM,CARBURANT,CRIT_AIR,PARC_{annee_debut},PARC_{annee_fin}",
-        }
-        reponse = requests.get(url, params=parametres, timeout=300)
-        reponse.raise_for_status()
-        with open(chemin, "wb") as fichier:
-            fichier.write(reponse.content)
-    return pd.read_csv(chemin, sep=";", dtype={"COMMUNE_CODE": str})
-import os
-import pandas as pd
-from src.config import RAW_DATA_DIR
-
-
-# get_frequentation permet de télécharger la base de données avec la freéquentations des gares
-def get_frequentation():
-
-    chemin = RAW_DATA_DIR / "frequentation-gares.parquet"  # chemin du fichier que l'on cherche
-    # déjà téléchargé : on relit le fichier au lieu de retélécharger
-    if os.path.exists(chemin):
-        return pd.read_parquet(chemin)  # si le fichier existe déjà dans data/raw on le relit et on le renvoie sans le télécharger à nouveau
-    url = 'https://tabular-api.data.gouv.fr/api/resources/d4cf16d5-dd91-453c-887e-6084639caac8/data/csv/'
-    df = pd.read_csv(url, sep=',')  # ouvre le fichier comme dataframe pandas
-    df = df.drop(columns=["__id"])  # supprime la première colonne
-    df.to_parquet(chemin, index=False)  # enregistre le fichier au chemin à l'emplacement prévu
-    return df
-
-
-# get_gares permet de télécharger le jeu de données sur les gares
-def get_gares():
-
-    chemin = RAW_DATA_DIR / "gares-de-voyageurs.parquet"  # chemin du fichier que l'on cherche
-    # déjà téléchargé : on relit le fichier au lieu de retélécharger
-    if os.path.exists(chemin):
-        return pd.read_parquet(chemin)  # si le fichier existe déjà dans data/raw on le relit et on le renvoie sans le télécharger à nouveau
-    url = 'https://ressources.data.sncf.com/api/explore/v2.1/catalog/datasets/gares-de-voyageurs/exports/csv?use_labels=true'
-    df = pd.read_csv(url, sep=';', dtype={"Code commune": str})  # ouvre le fichier comme dataframe pandas en convertissant Code commune comme str pour éviter de perdre le premier 0
-    df.to_parquet(chemin, index=False)  # enregistre le fichier au chemin à l'emplacement prévu
-    return df
